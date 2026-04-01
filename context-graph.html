@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Context Graph — Naptha</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --velvet: #0A0A0F;
+      --velvet-mid: #111118;
+      --velvet-light: #1A1A24;
+      --orange: #FF6B35;
+      --violet: #8B5CF6;
+      --rose: #EC4899;
+      --teal: #00BFA5;
+      --text-on-dark: #FFFFFF;
+      --text-muted: #9999AA;
+      --text-secondary: #555566;
+      --border-dark: #1E1E2A;
+      --panel-width: 320px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--velvet);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--text-on-dark);
+      overflow: hidden;
+    }
+
+    #graph-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      transition: width 0.3s ease;
+    }
+
+    #graph-container.panel-open {
+      width: calc(100vw - var(--panel-width));
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .node {
+      cursor: pointer;
+      transition: filter 0.2s ease;
+    }
+
+    .node:hover {
+      filter: brightness(1.2);
+    }
+
+    .node.selected .node-ring {
+      stroke-width: 5;
+    }
+
+    .node-ring {
+      fill: none;
+      stroke-width: 3;
+    }
+
+    .node-inner {
+      stroke: var(--velvet-mid);
+      stroke-width: 2;
+    }
+
+    .node-label {
+      font-size: 10px;
+      font-weight: 500;
+      fill: var(--text-muted);
+      text-anchor: middle;
+      pointer-events: none;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    }
+
+    .link {
+      stroke-opacity: 0.4;
+      stroke-linecap: round;
+    }
+
+    .link-glow {
+      stroke-opacity: 0.15;
+      stroke-linecap: round;
+    }
+
+    /* Tooltip (for non-source nodes) */
+    .tooltip {
+      position: absolute;
+      background: var(--velvet-mid);
+      border: 1px solid var(--border-dark);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 12px;
+      color: var(--text-on-dark);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 200;
+      max-width: 280px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    .tooltip.visible {
+      opacity: 1;
+    }
+
+    .tooltip-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .tooltip-type {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .tooltip-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Right-hand side panel */
+    .side-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: var(--panel-width);
+      height: 100vh;
+      background: var(--velvet-mid);
+      border-left: 1px solid var(--border-dark);
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      box-shadow: -8px 0 32px rgba(0,0,0,0.4);
+    }
+
+    .side-panel.open {
+      transform: translateX(0);
+    }
+
+    .panel-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-dark);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .panel-header-content {
+      flex: 1;
+    }
+
+    .panel-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .panel-type {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.9;
+    }
+
+    .panel-close {
+      background: var(--velvet-light);
+      border: 1px solid var(--border-dark);
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .panel-close:hover {
+      background: var(--velvet);
+      color: var(--text-on-dark);
+    }
+
+    .panel-meta {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-dark);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .panel-meta-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+    }
+
+    .panel-meta-label {
+      color: var(--text-secondary);
+    }
+
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .sample-data-section {
+      margin-bottom: 20px;
+    }
+
+    .sample-data-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sample-data-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-dark);
+    }
+
+    .sample-data-item {
+      background: var(--velvet);
+      border: 1px solid var(--border-dark);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-on-dark);
+      position: relative;
+    }
+
+    .sample-data-item::before {
+      content: '"';
+      position: absolute;
+      top: 8px;
+      left: 12px;
+      font-size: 24px;
+      opacity: 0.2;
+      font-family: Georgia, serif;
+    }
+
+    .sample-data-item:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Connection info for non-source nodes */
+    .connection-section {
+      margin-bottom: 20px;
+    }
+
+    .connection-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .connection-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-dark);
+    }
+
+    .connection-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--velvet);
+      border: 1px solid var(--border-dark);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .connection-item:hover {
+      border-color: var(--text-secondary);
+      background: var(--velvet-light);
+    }
+
+    .connection-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .connection-name {
+      flex: 1;
+    }
+
+    .connection-arrow {
+      color: var(--text-secondary);
+      font-size: 10px;
+    }
+
+    /* Mini legend */
+    .mini-legend {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      display: flex;
+      gap: 12px;
+      background: rgba(17, 17, 24, 0.85);
+      border: 1px solid var(--border-dark);
+      border-radius: 8px;
+      padding: 8px 12px;
+      z-index: 100;
+      font-size: 10px;
+    }
+
+    .mini-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .mini-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 2px solid;
+      background: var(--velvet-mid);
+    }
+
+    /* Click hint */
+    .click-hint {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      background: rgba(17, 17, 24, 0.85);
+      border: 1px solid var(--border-dark);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 10px;
+      color: var(--text-muted);
+      z-index: 100;
+      transition: opacity 0.3s ease;
+    }
+
+    .click-hint.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="graph-container">
+    <svg id="graph"></svg>
+  </div>
+
+  <!-- Mini legend -->
+  <div class="mini-legend">
+    <div class="mini-legend-item">
+      <div class="mini-legend-dot" style="border-color: var(--orange);"></div>
+      <span>Sources</span>
+    </div>
+    <div class="mini-legend-item">
+      <div class="mini-legend-dot" style="border-color: var(--violet);"></div>
+      <span>Signals</span>
+    </div>
+    <div class="mini-legend-item">
+      <div class="mini-legend-dot" style="border-color: var(--rose);"></div>
+      <span>Insights</span>
+    </div>
+    <div class="mini-legend-item">
+      <div class="mini-legend-dot" style="border-color: var(--teal);"></div>
+      <span>Decisions</span>
+    </div>
+  </div>
+
+  <!-- Click hint -->
+  <div class="click-hint" id="click-hint">
+    Click a node to see details
+  </div>
+
+  <!-- Tooltip (for hover) -->
+  <div class="tooltip" id="tooltip">
+    <div class="tooltip-title"></div>
+    <div class="tooltip-type"></div>
+    <div class="tooltip-meta"></div>
+  </div>
+
+  <!-- Side panel -->
+  <div class="side-panel" id="side-panel">
+    <div class="panel-header">
+      <div class="panel-header-content">
+        <div class="panel-title" id="panel-title"></div>
+        <div class="panel-type" id="panel-type"></div>
+      </div>
+      <button class="panel-close" id="panel-close">×</button>
+    </div>
+    <div class="panel-meta" id="panel-meta"></div>
+    <div class="panel-content" id="panel-content"></div>
+  </div>
+
+  <script>
+    const colors = {
+      source: '#FF6B35',
+      signal: '#8B5CF6',
+      insight: '#EC4899',
+      decision: '#00BFA5',
+      velvet: '#0A0A0F',
+      velvetMid: '#111118',
+      velvetLight: '#1A1A24',
+      textMuted: '#9999AA'
+    };
+
+    const data = generateProductData();
+    let selectedNode = null;
+
+    function generateProductData() {
+      const nodes = [];
+      const links = [];
+
+      // Data Sources with sample data
+      const sources = [
+        {
+          id: 'intercom',
+          label: 'Intercom',
+          type: 'source',
+          weight: 0.9,
+          sampleData: [
+            '"We need to export all our data before renewal" - Acme Corp',
+            '"Dashboard keeps timing out when loading reports" - TechStart Inc',
+            '"How do I add team members to my workspace?" - DataFlow Co'
+          ]
+        },
+        {
+          id: 'slack',
+          label: 'Slack',
+          type: 'source',
+          weight: 0.85,
+          sampleData: [
+            '#product-feedback: "Any update on the Salesforce integration?"',
+            '#support-escalations: "Customer churned - cited missing SSO"',
+            '#sales: "Enterprise prospect needs SAML before signing"'
+          ]
+        },
+        {
+          id: 'mixpanel',
+          label: 'Mixpanel',
+          type: 'source',
+          weight: 0.95,
+          sampleData: [
+            'Retention drop: Day 45 cohort down 23% vs benchmark',
+            'Feature adoption: Reports used by only 12% of active users',
+            'Activation: 34% complete onboarding within 7 days'
+          ]
+        },
+        {
+          id: 'gong',
+          label: 'Gong',
+          type: 'source',
+          weight: 0.7,
+          sampleData: [
+            'Sales call: "They asked about enterprise pricing 3x"',
+            'Demo recording: "Prospect confused by pricing tiers"',
+            'Lost deal: "Competitor had SSO, we didn\'t"'
+          ]
+        },
+        {
+          id: 'jira',
+          label: 'Jira',
+          type: 'source',
+          weight: 0.8,
+          sampleData: [
+            'PROD-1234: Mobile crash on iOS 17 (P1)',
+            'PROD-892: API rate limits affecting power users',
+            'PROD-567: Dashboard performance degradation'
+          ]
+        },
+        {
+          id: 'hubspot',
+          label: 'HubSpot',
+          type: 'source',
+          weight: 0.65,
+          sampleData: [
+            'Deal note: "Waiting on enterprise features"',
+            'Contact activity: Downloaded security whitepaper 3x',
+            'Lead score drop: Engagement down after pricing call'
+          ]
+        },
+        {
+          id: 'posthog',
+          label: 'PostHog',
+          type: 'source',
+          weight: 0.75,
+          sampleData: [
+            'Session replay: Users rage-clicking export button',
+            'Funnel: 67% drop-off at step 3 of onboarding',
+            'Heatmap: Settings page barely explored'
+          ]
+        },
+        {
+          id: 'zendesk',
+          label: 'Zendesk',
+          type: 'source',
+          weight: 0.6,
+          sampleData: [
+            'Ticket #4521: "Can\'t figure out billing"',
+            'Ticket #4498: "Need bulk export for compliance"',
+            'Ticket #4467: "When is Salesforce integration coming?"'
+          ]
+        },
+      ];
+
+      // Signals with contributing sources
+      const signals = [
+        { id: 'sig-export-request', label: 'Bulk export requests', type: 'signal', weight: 0.85, sources: ['intercom', 'slack', 'zendesk'], count: '47 mentions' },
+        { id: 'sig-churn-drop', label: 'Day 45 retention drop', type: 'signal', weight: 0.92, sources: ['mixpanel', 'posthog'], count: '23% decline' },
+        { id: 'sig-api-complaints', label: 'API rate limits', type: 'signal', weight: 0.78, sources: ['intercom', 'slack'], count: '12 tickets' },
+        { id: 'sig-onboarding-friction', label: 'Onboarding confusion', type: 'signal', weight: 0.88, sources: ['gong', 'intercom', 'mixpanel'], count: '34% drop-off' },
+        { id: 'sig-mobile-crashes', label: 'Mobile crashes', type: 'signal', weight: 0.65, sources: ['intercom', 'jira'], count: '8 reports' },
+        { id: 'sig-pricing-questions', label: 'Pricing confusion', type: 'signal', weight: 0.72, sources: ['gong', 'hubspot', 'intercom'], count: '29 mentions' },
+        { id: 'sig-integration-requests', label: 'Salesforce asks', type: 'signal', weight: 0.81, sources: ['slack', 'gong', 'hubspot'], count: '18 requests' },
+        { id: 'sig-performance', label: 'Slow dashboard', type: 'signal', weight: 0.77, sources: ['intercom', 'posthog', 'jira'], count: '15 reports' },
+        { id: 'sig-feature-adoption', label: 'Low reports usage', type: 'signal', weight: 0.69, sources: ['mixpanel', 'posthog'], count: '12% adoption' },
+        { id: 'sig-enterprise-needs', label: 'SSO/SAML requests', type: 'signal', weight: 0.83, sources: ['gong', 'hubspot', 'slack'], count: '22 requests' },
+      ];
+
+      // Insights
+      const insights = [
+        { id: 'ins-power-user-churn', label: 'Power user churn risk', type: 'insight', weight: 0.94, signals: ['sig-export-request', 'sig-churn-drop', 'sig-api-complaints'], summary: '3 signals confirm pattern' },
+        { id: 'ins-onboarding-gap', label: 'Onboarding → activation gap', type: 'insight', weight: 0.89, signals: ['sig-onboarding-friction', 'sig-feature-adoption'], summary: '2 signals confirm pattern' },
+        { id: 'ins-enterprise-ready', label: 'Enterprise readiness gap', type: 'insight', weight: 0.86, signals: ['sig-enterprise-needs', 'sig-integration-requests'], summary: '2 signals confirm pattern' },
+        { id: 'ins-pricing-friction', label: 'Pricing model friction', type: 'insight', weight: 0.75, signals: ['sig-pricing-questions'], summary: '1 signal confirms pattern' },
+        { id: 'ins-platform-stability', label: 'Platform stability concerns', type: 'insight', weight: 0.79, signals: ['sig-mobile-crashes', 'sig-performance'], summary: '2 signals confirm pattern' },
+      ];
+
+      // Decisions
+      const decisions = [
+        { id: 'dec-bulk-export', label: 'Ship bulk export Q2', type: 'decision', weight: 0.91, insights: ['ins-power-user-churn'], status: 'Approved' },
+        { id: 'dec-onboarding-revamp', label: 'Redesign onboarding', type: 'decision', weight: 0.87, insights: ['ins-onboarding-gap'], status: 'In Progress' },
+        { id: 'dec-enterprise-tier', label: 'Launch enterprise tier', type: 'decision', weight: 0.84, insights: ['ins-enterprise-ready', 'ins-pricing-friction'], status: 'Planning' },
+        { id: 'dec-performance-sprint', label: 'Performance sprint', type: 'decision', weight: 0.78, insights: ['ins-platform-stability'], status: 'Scheduled' },
+      ];
+
+      nodes.push(...sources, ...signals, ...insights, ...decisions);
+
+      signals.forEach(signal => {
+        signal.sources.forEach(sourceId => {
+          links.push({
+            source: sourceId,
+            target: signal.id,
+            strength: 0.6 + Math.random() * 0.4
+          });
+        });
+      });
+
+      insights.forEach(insight => {
+        insight.signals.forEach(signalId => {
+          links.push({
+            source: signalId,
+            target: insight.id,
+            strength: 0.6 + Math.random() * 0.4
+          });
+        });
+      });
+
+      decisions.forEach(decision => {
+        decision.insights.forEach(insightId => {
+          links.push({
+            source: insightId,
+            target: decision.id,
+            strength: 0.6 + Math.random() * 0.4
+          });
+        });
+      });
+
+      return { nodes, links };
+    }
+
+    const svg = d3.select('#graph');
+    const container = document.getElementById('graph-container');
+    const sidePanel = document.getElementById('side-panel');
+    const clickHint = document.getElementById('click-hint');
+    let width = container.clientWidth;
+    let height = container.clientHeight;
+
+    const defs = svg.append('defs');
+
+    const glow = defs.append('filter')
+      .attr('id', 'glow')
+      .attr('x', '-50%')
+      .attr('y', '-50%')
+      .attr('width', '200%')
+      .attr('height', '200%');
+
+    glow.append('feGaussianBlur')
+      .attr('stdDeviation', '3')
+      .attr('result', 'coloredBlur');
+
+    const glowMerge = glow.append('feMerge');
+    glowMerge.append('feMergeNode').attr('in', 'coloredBlur');
+    glowMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+    const linkGroup = svg.append('g').attr('class', 'links');
+    const nodeGroup = svg.append('g').attr('class', 'nodes');
+
+    const simulation = d3.forceSimulation(data.nodes)
+      .force('link', d3.forceLink(data.links)
+        .id(d => d.id)
+        .distance(80)
+        .strength(d => d.strength * 0.5))
+      .force('charge', d3.forceManyBody()
+        .strength(-300)
+        .distanceMax(350))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('collision', d3.forceCollide()
+        .radius(d => getNodeRadius(d) + 15))
+      .force('x', d3.forceX(width / 2).strength(0.06))
+      .force('y', d3.forceY(height / 2).strength(0.06));
+
+    function getNodeRadius(d) {
+      const baseRadius = d.type === 'source' ? 18 :
+                         d.type === 'signal' ? 14 :
+                         d.type === 'insight' ? 16 : 18;
+      return baseRadius * (0.7 + d.weight * 0.4);
+    }
+
+    function getNodeColor(d) {
+      switch(d.type) {
+        case 'source': return colors.source;
+        case 'signal': return colors.signal;
+        case 'insight': return colors.insight;
+        case 'decision': return colors.decision;
+        default: return colors.textMuted;
+      }
+    }
+
+    const linkGlow = linkGroup.selectAll('.link-glow')
+      .data(data.links)
+      .join('line')
+      .attr('class', 'link-glow')
+      .attr('stroke', d => {
+        const sourceNode = data.nodes.find(n => n.id === (d.source.id || d.source));
+        return getNodeColor(sourceNode);
+      })
+      .attr('stroke-width', 6);
+
+    const link = linkGroup.selectAll('.link')
+      .data(data.links)
+      .join('line')
+      .attr('class', 'link')
+      .attr('stroke', d => {
+        const sourceNode = data.nodes.find(n => n.id === (d.source.id || d.source));
+        return getNodeColor(sourceNode);
+      })
+      .attr('stroke-width', d => 1 + d.strength * 1.5);
+
+    const node = nodeGroup.selectAll('.node')
+      .data(data.nodes)
+      .join('g')
+      .attr('class', 'node')
+      .call(d3.drag()
+        .on('start', dragstarted)
+        .on('drag', dragged)
+        .on('end', dragended));
+
+    node.append('circle')
+      .attr('class', 'node-ring')
+      .attr('r', d => getNodeRadius(d) + 2)
+      .attr('stroke', d => getNodeColor(d))
+      .attr('filter', 'url(#glow)');
+
+    node.append('circle')
+      .attr('class', 'node-inner')
+      .attr('r', d => getNodeRadius(d))
+      .attr('fill', colors.velvetMid);
+
+    node.append('text')
+      .attr('class', 'node-label')
+      .attr('dy', d => getNodeRadius(d) + 14)
+      .text(d => d.label.length > 16 ? d.label.substring(0, 14) + '...' : d.label);
+
+    const tooltip = document.getElementById('tooltip');
+
+    // Hover for tooltip (brief info)
+    node.on('mouseenter', function(event, d) {
+      if (selectedNode === d) return; // Don't show tooltip for selected node
+
+      const connections = data.links.filter(l =>
+        (l.source.id || l.source) === d.id || (l.target.id || l.target) === d.id
+      ).length;
+
+      tooltip.querySelector('.tooltip-title').textContent = d.label;
+      tooltip.querySelector('.tooltip-type').textContent = d.type.toUpperCase();
+      tooltip.querySelector('.tooltip-type').style.color = getNodeColor(d);
+
+      let metaText = `${connections} connections · Confidence: ${Math.round(d.weight * 100)}%`;
+      if (d.count) metaText = `${d.count} · ${metaText}`;
+      tooltip.querySelector('.tooltip-meta').textContent = metaText;
+
+      tooltip.style.left = (event.pageX + 15) + 'px';
+      tooltip.style.top = (event.pageY - 10) + 'px';
+      tooltip.classList.add('visible');
+    })
+    .on('mousemove', function(event) {
+      tooltip.style.left = (event.pageX + 15) + 'px';
+      tooltip.style.top = (event.pageY - 10) + 'px';
+    })
+    .on('mouseleave', function() {
+      tooltip.classList.remove('visible');
+    });
+
+    // Click to open side panel
+    node.on('click', function(event, d) {
+      event.stopPropagation();
+      selectNode(d);
+    });
+
+    // Click on background to close panel
+    svg.on('click', function() {
+      closePanel();
+    });
+
+    function selectNode(d) {
+      // Update selected state
+      selectedNode = d;
+      node.classed('selected', n => n === d);
+
+      // Hide click hint
+      clickHint.classList.add('hidden');
+
+      // Highlight connections
+      const connectedIds = new Set([d.id]);
+      data.links.forEach(l => {
+        if ((l.source.id || l.source) === d.id) connectedIds.add(l.target.id || l.target);
+        if ((l.target.id || l.target) === d.id) connectedIds.add(l.source.id || l.source);
+      });
+
+      node.style('opacity', n => connectedIds.has(n.id) ? 1 : 0.2);
+      link.style('opacity', l =>
+        ((l.source.id || l.source) === d.id || (l.target.id || l.target) === d.id) ? 0.8 : 0.05
+      );
+      linkGlow.style('opacity', l =>
+        ((l.source.id || l.source) === d.id || (l.target.id || l.target) === d.id) ? 0.3 : 0
+      );
+
+      // Update panel content
+      document.getElementById('panel-title').textContent = d.label;
+      document.getElementById('panel-type').textContent = d.type.toUpperCase();
+      document.getElementById('panel-type').style.color = getNodeColor(d);
+
+      // Build meta section
+      const connections = data.links.filter(l =>
+        (l.source.id || l.source) === d.id || (l.target.id || l.target) === d.id
+      ).length;
+
+      let metaHTML = `
+        <div class="panel-meta-item">
+          <span class="panel-meta-label">Confidence</span>
+          <span>${Math.round(d.weight * 100)}%</span>
+        </div>
+        <div class="panel-meta-item">
+          <span class="panel-meta-label">Connections</span>
+          <span>${connections}</span>
+        </div>
+      `;
+      if (d.count) {
+        metaHTML += `
+          <div class="panel-meta-item">
+            <span class="panel-meta-label">Volume</span>
+            <span>${d.count}</span>
+          </div>
+        `;
+      }
+      if (d.status) {
+        metaHTML += `
+          <div class="panel-meta-item">
+            <span class="panel-meta-label">Status</span>
+            <span>${d.status}</span>
+          </div>
+        `;
+      }
+      if (d.summary) {
+        metaHTML += `
+          <div class="panel-meta-item">
+            <span class="panel-meta-label">Evidence</span>
+            <span>${d.summary}</span>
+          </div>
+        `;
+      }
+      document.getElementById('panel-meta').innerHTML = metaHTML;
+
+      // Build content section
+      let contentHTML = '';
+
+      // For source nodes, show sample data
+      if (d.type === 'source' && d.sampleData) {
+        contentHTML += `
+          <div class="sample-data-section">
+            <div class="sample-data-label">Sample Data</div>
+            ${d.sampleData.map(s => `<div class="sample-data-item">${s}</div>`).join('')}
+          </div>
+        `;
+      }
+
+      // Show connected nodes (outgoing)
+      const outgoingLinks = data.links.filter(l => (l.source.id || l.source) === d.id);
+      if (outgoingLinks.length > 0) {
+        const targetNodes = outgoingLinks.map(l => data.nodes.find(n => n.id === (l.target.id || l.target)));
+        contentHTML += `
+          <div class="connection-section">
+            <div class="connection-label">Feeds Into</div>
+            ${targetNodes.map(n => `
+              <div class="connection-item" onclick="selectNodeById('${n.id}')">
+                <div class="connection-dot" style="background: ${getNodeColor(n)};"></div>
+                <span class="connection-name">${n.label}</span>
+                <span class="connection-arrow">→</span>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      // Show connected nodes (incoming)
+      const incomingLinks = data.links.filter(l => (l.target.id || l.target) === d.id);
+      if (incomingLinks.length > 0) {
+        const sourceNodes = incomingLinks.map(l => data.nodes.find(n => n.id === (l.source.id || l.source)));
+        contentHTML += `
+          <div class="connection-section">
+            <div class="connection-label">Sources</div>
+            ${sourceNodes.map(n => `
+              <div class="connection-item" onclick="selectNodeById('${n.id}')">
+                <div class="connection-dot" style="background: ${getNodeColor(n)};"></div>
+                <span class="connection-name">${n.label}</span>
+                <span class="connection-arrow">→</span>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      document.getElementById('panel-content').innerHTML = contentHTML;
+
+      // Open panel
+      sidePanel.classList.add('open');
+      container.classList.add('panel-open');
+
+      // Recenter simulation
+      updateSimulationCenter();
+    }
+
+    window.selectNodeById = function(id) {
+      const nodeData = data.nodes.find(n => n.id === id);
+      if (nodeData) selectNode(nodeData);
+    };
+
+    function closePanel() {
+      selectedNode = null;
+      node.classed('selected', false);
+      sidePanel.classList.remove('open');
+      container.classList.remove('panel-open');
+
+      // Reset highlights
+      node.style('opacity', 1);
+      link.style('opacity', 0.4);
+      linkGlow.style('opacity', 0.15);
+
+      // Recenter simulation
+      updateSimulationCenter();
+    }
+
+    document.getElementById('panel-close').addEventListener('click', function(e) {
+      e.stopPropagation();
+      closePanel();
+    });
+
+    function updateSimulationCenter() {
+      const newWidth = container.clientWidth;
+      simulation.force('center', d3.forceCenter(newWidth / 2, height / 2));
+      simulation.force('x', d3.forceX(newWidth / 2).strength(0.06));
+      simulation.alpha(0.3).restart();
+    }
+
+    simulation.on('tick', () => {
+      linkGlow
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y);
+
+      link
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y);
+
+      node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+
+    function dragstarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragended(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+
+    window.addEventListener('resize', () => {
+      width = container.clientWidth;
+      height = container.clientHeight;
+      updateSimulationCenter();
+      simulation.force('y', d3.forceY(height / 2).strength(0.06));
+      simulation.alpha(0.3).restart();
+    });
+  </script>
+</body>
+</html>

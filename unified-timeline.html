@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unified Timeline</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      /* Core colors */
+      --velvet: #0A0A0F;
+      --velvet-mid: #111118;
+      --velvet-light: #1A1A24;
+      --orange: #FF6B35;
+      --violet: #8B5CF6;
+      --rose: #EC4899;
+      --teal: #00BFA5;
+
+      /* Supporting colors */
+      --white: #FFFFFF;
+      --muted: #9999AA;
+      --secondary: #555566;
+      --border: #1E1E2A;
+
+      /* Gradient */
+      --gradient: linear-gradient(135deg, #FF6B35, #EC4899, #8B5CF6);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--velvet);
+      color: var(--white);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+
+    .chart-container {
+      background-color: var(--velvet-mid);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .legend-bar {
+      width: 12px;
+      height: 8px;
+      border-radius: 2px;
+    }
+
+    .chart-svg {
+      width: 100%;
+      overflow: visible;
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: absolute;
+      background-color: var(--velvet-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 1000;
+      max-width: 280px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .tooltip-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--white);
+    }
+
+    .tooltip-content {
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .tooltip-meta {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      color: var(--secondary);
+      font-size: 11px;
+    }
+
+    /* Correlation line */
+    .correlation-line {
+      stroke: var(--muted);
+      stroke-width: 1;
+      stroke-dasharray: 4, 4;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    .correlation-line.active {
+      opacity: 0.5;
+    }
+
+    /* Interactive states */
+    .signal-bar {
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+
+    .signal-bar:hover {
+      opacity: 0.8;
+    }
+
+    .qual-dot {
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    .qual-dot:hover {
+      transform: scale(1.5);
+    }
+
+    /* Trace bars */
+    .trace-bar {
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+
+    .trace-bar:hover {
+      opacity: 0.8;
+    }
+
+    .trace-step {
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+
+    .trace-step:hover {
+      opacity: 0.9;
+    }
+
+    .trace-label {
+      font-size: 10px;
+      fill: var(--white);
+      pointer-events: none;
+    }
+
+    /* Detail panel */
+    .detail-panel {
+      position: fixed;
+      right: -400px;
+      top: 0;
+      width: 400px;
+      height: 100vh;
+      background-color: var(--velvet-mid);
+      border-left: 1px solid var(--border);
+      padding: 24px;
+      transition: right 0.3s ease;
+      overflow-y: auto;
+      z-index: 1001;
+    }
+
+    .detail-panel.open {
+      right: 0;
+    }
+
+    .detail-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .detail-panel-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .detail-panel-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 20px;
+      padding: 4px 8px;
+    }
+
+    .detail-panel-close:hover {
+      color: var(--white);
+    }
+
+    .detail-section {
+      margin-bottom: 20px;
+    }
+
+    .detail-section-title {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .detail-content {
+      background-color: var(--velvet-light);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .detail-tag {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+
+    .detail-tag.intercom {
+      background-color: rgba(255, 107, 53, 0.2);
+      color: var(--orange);
+    }
+
+    .detail-tag.dovetail {
+      background-color: rgba(139, 92, 246, 0.2);
+      color: var(--violet);
+    }
+
+    .detail-tag.sales {
+      background-color: rgba(0, 191, 165, 0.2);
+      color: var(--teal);
+    }
+
+    .correlated-item {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .correlated-item:last-child {
+      border-bottom: none;
+    }
+
+    .correlated-item-title {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .correlated-item-meta {
+      font-size: 11px;
+      color: var(--secondary);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Qualitative Chart -->
+    <div class="chart-container">
+      <svg id="qualitative-chart" class="chart-svg"></svg>
+    </div>
+
+    <!-- Quantitative Chart -->
+    <div class="chart-container">
+      <svg id="quantitative-chart" class="chart-svg"></svg>
+    </div>
+
+    <!-- Traces Chart -->
+    <div class="chart-container">
+      <svg id="traces-chart" class="chart-svg"></svg>
+    </div>
+
+    <!-- Signals Chart -->
+    <div class="chart-container">
+      <svg id="signals-chart" class="chart-svg"></svg>
+    </div>
+  </div>
+
+  <!-- Tooltip -->
+  <div class="tooltip" id="tooltip"></div>
+
+  <!-- Detail Panel -->
+  <div class="detail-panel" id="detail-panel">
+    <div class="detail-panel-header">
+      <span class="detail-panel-title">Details</span>
+      <button class="detail-panel-close" onclick="closeDetailPanel()">&times;</button>
+    </div>
+    <div id="detail-panel-content"></div>
+  </div>
+
+  <script>
+    // ========================================
+    // Configuration
+    // ========================================
+    const colors = {
+      velvet: '#0A0A0F',
+      velvetMid: '#111118',
+      velvetLight: '#1A1A24',
+      orange: '#FF6B35',
+      violet: '#8B5CF6',
+      rose: '#EC4899',
+      teal: '#00BFA5',
+      white: '#FFFFFF',
+      muted: '#9999AA',
+      secondary: '#555566',
+      border: '#1E1E2A'
+    };
+
+    const margin = { top: 10, right: 150, bottom: 25, left: 80 };
+    const width = 1100 - margin.left - margin.right;
+
+    // Chart heights
+    const signalsHeight = 75;
+    const quantitativeHeight = 60;
+    const tracesHeight = 60;
+    const qualitativeHeight = 80;
+
+    // ========================================
+    // Generate Sample Data
+    // ========================================
+    const startDate = new Date('2024-03-01');
+    const endDate = new Date('2024-03-31');
+    const days = d3.timeDays(startDate, endDate);
+
+    // Signals data (daily counts by type)
+    const signalsData = days.map(date => ({
+      date,
+      featureRequest: Math.floor(Math.random() * 15) + 2,
+      painPoint: Math.floor(Math.random() * 12) + 1,
+      bugReport: Math.floor(Math.random() * 8)
+    }));
+
+    // Quantitative data (continuous metrics)
+    let mrrBase = 45000;
+    let usersBase = 1200;
+    const quantitativeData = days.map(date => {
+      mrrBase += (Math.random() - 0.4) * 1500;
+      usersBase += (Math.random() - 0.45) * 50;
+      return {
+        date,
+        mrr: Math.max(40000, mrrBase),
+        activeUsers: Math.max(1000, Math.floor(usersBase))
+      };
+    });
+
+    // Qualitative data (individual discrete events)
+    const sources = ['intercom', 'dovetail', 'sales'];
+    const sampleTitles = {
+      intercom: [
+        "Can't figure out how to export data",
+        "The dashboard is loading slowly",
+        "Need help with API integration",
+        "Billing question about enterprise plan",
+        "Feature request: dark mode",
+        "Bug: notifications not working"
+      ],
+      dovetail: [
+        "User struggles with onboarding flow",
+        "Confusion around pricing tiers",
+        "Positive feedback on new feature",
+        "Request for team collaboration tools",
+        "Difficulty finding settings"
+      ],
+      sales: [
+        "Enterprise demo - security questions",
+        "Pricing negotiation call",
+        "Product feedback from prospect",
+        "Competitor comparison discussion",
+        "Integration requirements review"
+      ]
+    };
+
+    const qualitativeData = [];
+    days.forEach(date => {
+      // Random number of events per day per source
+      sources.forEach(source => {
+        const numEvents = Math.floor(Math.random() * 4);
+        for (let i = 0; i < numEvents; i++) {
+          const titles = sampleTitles[source];
+          qualitativeData.push({
+            id: `${source}-${date.getTime()}-${i}`,
+            date: new Date(date.getTime() + Math.random() * 86400000),
+            source,
+            title: titles[Math.floor(Math.random() * titles.length)],
+            signalsExtracted: Math.floor(Math.random() * 4) + 1
+          });
+        }
+      });
+    });
+
+    // Aggregate qualitative data for stream graph
+    const qualitativeAggregated = days.map(date => {
+      const dayData = { date };
+      sources.forEach(source => {
+        dayData[source] = qualitativeData.filter(d =>
+          d.source === source &&
+          d.date >= date &&
+          d.date < new Date(date.getTime() + 86400000)
+        ).length;
+      });
+      return dayData;
+    });
+
+    // Traces data (agent runs with duration and steps)
+    const agentTypes = ['user_research', 'prototyping', 'strategy'];
+    const agentColors = {
+      user_research: colors.orange,
+      prototyping: colors.violet,
+      strategy: colors.teal
+    };
+    const agentLabels = {
+      user_research: 'user-research-skill',
+      prototyping: 'prototyping-skill',
+      strategy: 'strategy-skill'
+    };
+
+    const stepTemplates = {
+      user_research: ['gather_sources', 'analyze_interviews', 'extract_insights', 'synthesize_findings', 'generate_report'],
+      prototyping: ['load_requirements', 'generate_wireframes', 'create_mockups', 'validate_design'],
+      strategy: ['collect_signals', 'identify_patterns', 'prioritize_opportunities', 'draft_recommendations']
+    };
+
+    const tracesData = [];
+    let traceId = 1;
+
+    // Generate random agent runs throughout the month
+    days.forEach(date => {
+      // 1-3 agent runs per day for manageable density
+      const numRuns = 1 + Math.floor(Math.random() * 3);
+
+      for (let i = 0; i < numRuns; i++) {
+        const agentType = agentTypes[Math.floor(Math.random() * agentTypes.length)];
+        const startTime = new Date(date.getTime() + Math.random() * 86400000);
+
+        // Duration between 6-24 hours (in ms)
+        const durationHours = 6 + Math.random() * 18;
+        const durationMs = durationHours * 60 * 60 * 1000;
+        const endTime = new Date(startTime.getTime() + durationMs);
+
+        // Generate steps within the trace
+        const steps = [];
+        const stepNames = stepTemplates[agentType];
+        let stepStart = startTime.getTime();
+
+        stepNames.forEach((stepName, idx) => {
+          const stepDuration = durationMs / stepNames.length * (0.5 + Math.random());
+          steps.push({
+            name: stepName,
+            startTime: new Date(stepStart),
+            endTime: new Date(stepStart + stepDuration),
+            status: Math.random() > 0.1 ? 'success' : 'error'
+          });
+          stepStart += stepDuration;
+        });
+
+        tracesData.push({
+          id: `trace-${traceId++}`,
+          agentType,
+          startTime,
+          endTime,
+          duration: durationMs,
+          steps,
+          status: steps.some(s => s.status === 'error') ? 'error' : 'success',
+          inputCount: Math.floor(Math.random() * 20) + 1,
+          outputCount: Math.floor(Math.random() * 15) + 1
+        });
+      }
+    });
+
+    // Sort traces by start time
+    tracesData.sort((a, b) => a.startTime - b.startTime);
+
+    // ========================================
+    // Shared X Scale
+    // ========================================
+    const xScale = d3.scaleTime()
+      .domain([startDate, endDate])
+      .range([0, width]);
+
+    // ========================================
+    // Tooltip
+    // ========================================
+    const tooltip = d3.select('#tooltip');
+
+    function showTooltip(event, content) {
+      tooltip
+        .style('opacity', 1)
+        .html(content)
+        .style('left', (event.pageX + 15) + 'px')
+        .style('top', (event.pageY - 10) + 'px');
+    }
+
+    function hideTooltip() {
+      tooltip.style('opacity', 0);
+    }
+
+    // ========================================
+    // Detail Panel
+    // ========================================
+    function openDetailPanel(data, type) {
+      const panel = d3.select('#detail-panel');
+      const content = d3.select('#detail-panel-content');
+
+      let html = '';
+
+      if (type === 'qualitative') {
+        const sourceColors = {
+          intercom: 'orange',
+          dovetail: 'violet',
+          sales: 'teal'
+        };
+
+        html = `
+          <div class="detail-section">
+            <div class="detail-section-title">Source</div>
+            <div class="detail-tag ${data.source}">${data.source}</div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">Content</div>
+            <div class="detail-content">${data.title}</div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">Date</div>
+            <div class="detail-content">${d3.timeFormat('%B %d, %Y at %H:%M')(data.date)}</div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">Extracted Signals (${data.signalsExtracted})</div>
+            <div class="detail-content">
+              ${Array(data.signalsExtracted).fill(0).map((_, i) => `
+                <div class="correlated-item">
+                  <div class="correlated-item-title">Signal ${i + 1}</div>
+                  <div class="correlated-item-meta">Auto-extracted from content</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else if (type === 'trace') {
+        const statusColor = data.status === 'success' ? colors.teal : colors.rose;
+
+        html = `
+          <div class="detail-section">
+            <div class="detail-section-title">Agent</div>
+            <div class="detail-tag" style="background-color: ${agentColors[data.agentType]}22; color: ${agentColors[data.agentType]}">
+              ${agentLabels[data.agentType]}
+            </div>
+            <span class="detail-tag" style="background-color: ${statusColor}22; color: ${statusColor}">
+              ${data.status}
+            </span>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">Duration</div>
+            <div class="detail-content">
+              ${(data.duration / 1000 / 60 / 60).toFixed(1)} hours<br>
+              <small style="color: ${colors.secondary}">
+                ${d3.timeFormat('%b %d %H:%M')(data.startTime)} → ${d3.timeFormat('%b %d %H:%M')(data.endTime)}
+              </small>
+            </div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">I/O</div>
+            <div class="detail-content">
+              <strong>${data.inputCount}</strong> inputs → <strong>${data.outputCount}</strong> outputs
+            </div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">Steps (${data.steps.length})</div>
+            <div class="detail-content">
+              ${data.steps.map(step => {
+                const stepDuration = (step.endTime - step.startTime) / 1000 / 60;
+                const stepStatusColor = step.status === 'success' ? colors.teal : colors.rose;
+                return `
+                  <div class="correlated-item">
+                    <div class="correlated-item-title">
+                      <span style="color: ${stepStatusColor}">●</span> ${step.name}
+                    </div>
+                    <div class="correlated-item-meta">${stepDuration.toFixed(1)} min</div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">Correlated Qualitative Sources</div>
+            <div class="detail-content">
+              ${qualitativeData
+                .filter(q => q.date >= data.startTime && q.date <= data.endTime)
+                .slice(0, 5)
+                .map(q => `
+                  <div class="correlated-item">
+                    <div class="correlated-item-title">${q.title}</div>
+                    <div class="correlated-item-meta">${q.source} · ${d3.timeFormat('%H:%M')(q.date)}</div>
+                  </div>
+                `).join('') || '<div class="correlated-item-meta">No sources during this run</div>'}
+            </div>
+          </div>
+        `;
+      } else if (type === 'signal') {
+        html = `
+          <div class="detail-section">
+            <div class="detail-section-title">Date</div>
+            <div class="detail-content">${d3.timeFormat('%B %d, %Y')(data.date)}</div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">Signal Counts</div>
+            <div class="detail-content">
+              <div class="correlated-item">
+                <div class="correlated-item-title" style="color: ${colors.violet}">Feature Requests</div>
+                <div class="correlated-item-meta">${data.featureRequest} signals</div>
+              </div>
+              <div class="correlated-item">
+                <div class="correlated-item-title" style="color: ${colors.rose}">Pain Points</div>
+                <div class="correlated-item-meta">${data.painPoint} signals</div>
+              </div>
+              <div class="correlated-item">
+                <div class="correlated-item-title" style="color: ${colors.orange}">Bug Reports</div>
+                <div class="correlated-item-meta">${data.bugReport} signals</div>
+              </div>
+            </div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">Correlated Qualitative Sources</div>
+            <div class="detail-content">
+              ${qualitativeData
+                .filter(q => q.date >= data.date && q.date < new Date(data.date.getTime() + 86400000))
+                .slice(0, 5)
+                .map(q => `
+                  <div class="correlated-item">
+                    <div class="correlated-item-title">${q.title}</div>
+                    <div class="correlated-item-meta">${q.source} · ${d3.timeFormat('%H:%M')(q.date)}</div>
+                  </div>
+                `).join('') || '<div class="correlated-item-meta">No sources for this day</div>'}
+            </div>
+          </div>
+        `;
+      }
+
+      content.html(html);
+      panel.classed('open', true);
+    }
+
+    function closeDetailPanel() {
+      d3.select('#detail-panel').classed('open', false);
+    }
+
+    // Close panel on escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDetailPanel();
+    });
+
+    // ========================================
+    // Signals Chart (Stacked Bar Histogram)
+    // ========================================
+    function renderSignalsChart() {
+      const svg = d3.select('#signals-chart')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', signalsHeight + margin.top + margin.bottom);
+
+      const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+      // Y-axis title
+      g.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -signalsHeight / 2)
+        .attr('y', -55)
+        .attr('text-anchor', 'middle')
+        .attr('fill', colors.white)
+        .attr('font-size', '13px')
+        .attr('font-weight', '500')
+        .text('Signals');
+
+      // Stack the data
+      const stack = d3.stack()
+        .keys(['featureRequest', 'painPoint', 'bugReport']);
+
+      const stacked = stack(signalsData);
+
+      // Y scale
+      const yMax = d3.max(signalsData, d => d.featureRequest + d.painPoint + d.bugReport);
+      const yScale = d3.scaleLinear()
+        .domain([0, yMax])
+        .range([signalsHeight, 0]);
+
+      // Color scale
+      const colorScale = d3.scaleOrdinal()
+        .domain(['featureRequest', 'painPoint', 'bugReport'])
+        .range([colors.violet, colors.rose, colors.orange]);
+
+      // Bar width
+      const barWidth = width / days.length - 2;
+
+      // Render bars
+      const layers = g.selectAll('.layer')
+        .data(stacked)
+        .join('g')
+        .attr('class', 'layer')
+        .attr('fill', d => colorScale(d.key));
+
+      layers.selectAll('rect')
+        .data(d => d)
+        .join('rect')
+        .attr('class', 'signal-bar')
+        .attr('x', d => xScale(d.data.date) - barWidth / 2)
+        .attr('y', d => yScale(d[1]))
+        .attr('height', d => yScale(d[0]) - yScale(d[1]))
+        .attr('width', barWidth)
+        .attr('rx', 2)
+        .on('mouseenter', (event, d) => {
+          const total = d.data.featureRequest + d.data.painPoint + d.data.bugReport;
+          showTooltip(event, `
+            <div class="tooltip-title">${d3.timeFormat('%B %d')(d.data.date)}</div>
+            <div class="tooltip-content">
+              <strong>${total}</strong> total signals<br>
+              ${d.data.featureRequest} feature requests<br>
+              ${d.data.painPoint} pain points<br>
+              ${d.data.bugReport} bug reports
+            </div>
+          `);
+        })
+        .on('mouseleave', hideTooltip)
+        .on('click', (event, d) => openDetailPanel(d.data, 'signal'));
+
+      // X Axis
+      g.append('g')
+        .attr('transform', `translate(0,${signalsHeight})`)
+        .call(d3.axisBottom(xScale)
+          .ticks(d3.timeDay.every(2))
+          .tickFormat(d3.timeFormat('%b %d')))
+        .attr('color', colors.muted)
+        .selectAll('text')
+        .attr('fill', colors.muted)
+        .style('font-size', '10px');
+
+      // Y Axis
+      g.append('g')
+        .call(d3.axisLeft(yScale).ticks(5))
+        .attr('color', colors.muted)
+        .selectAll('text')
+        .attr('fill', colors.muted)
+        .style('font-size', '10px');
+
+      // Grid lines
+      g.append('g')
+        .attr('class', 'grid')
+        .call(d3.axisLeft(yScale)
+          .ticks(5)
+          .tickSize(-width)
+          .tickFormat(''))
+        .attr('color', colors.border)
+        .attr('opacity', 0.3)
+        .selectAll('line')
+        .attr('stroke', colors.border);
+
+      // Legend on right side
+      const signalTypes = [
+        { key: 'featureRequest', label: 'Feature Request', color: colors.violet },
+        { key: 'painPoint', label: 'Pain Point', color: colors.rose },
+        { key: 'bugReport', label: 'Bug Report', color: colors.orange }
+      ];
+      const legendX = width + 20;
+      const legendY = 20;
+      const legendSpacing = 18;
+
+      signalTypes.forEach((type, i) => {
+        const legendGroup = g.append('g')
+          .attr('transform', `translate(${legendX}, ${legendY + i * legendSpacing})`);
+
+        legendGroup.append('rect')
+          .attr('width', 14)
+          .attr('height', 14)
+          .attr('rx', 3)
+          .attr('fill', type.color)
+          .attr('fill-opacity', 0.8);
+
+        legendGroup.append('text')
+          .attr('x', 20)
+          .attr('y', 11)
+          .attr('fill', colors.muted)
+          .attr('font-size', '11px')
+          .text(type.label);
+      });
+    }
+
+    // ========================================
+    // Quantitative Chart (Line Chart)
+    // ========================================
+    function renderQuantitativeChart() {
+      const svg = d3.select('#quantitative-chart')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', quantitativeHeight + margin.top + margin.bottom);
+
+      const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+      // Y-axis title
+      g.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -quantitativeHeight / 2)
+        .attr('y', -55)
+        .attr('text-anchor', 'middle')
+        .attr('fill', colors.white)
+        .attr('font-size', '13px')
+        .attr('font-weight', '500')
+        .text('Quantitative');
+
+      // Y scales (dual axis)
+      const yScaleMRR = d3.scaleLinear()
+        .domain([d3.min(quantitativeData, d => d.mrr) * 0.95, d3.max(quantitativeData, d => d.mrr) * 1.05])
+        .range([quantitativeHeight, 0]);
+
+      const yScaleUsers = d3.scaleLinear()
+        .domain([d3.min(quantitativeData, d => d.activeUsers) * 0.95, d3.max(quantitativeData, d => d.activeUsers) * 1.05])
+        .range([quantitativeHeight, 0]);
+
+      // Grid lines
+      g.append('g')
+        .attr('class', 'grid')
+        .call(d3.axisLeft(yScaleMRR)
+          .ticks(4)
+          .tickSize(-width)
+          .tickFormat(''))
+        .attr('color', colors.border)
+        .attr('opacity', 0.3);
+
+      // MRR Line
+      const mrrLine = d3.line()
+        .x(d => xScale(d.date))
+        .y(d => yScaleMRR(d.mrr))
+        .curve(d3.curveMonotoneX);
+
+      g.append('path')
+        .datum(quantitativeData)
+        .attr('fill', 'none')
+        .attr('stroke', colors.teal)
+        .attr('stroke-width', 2)
+        .attr('d', mrrLine);
+
+      // MRR Area (subtle fill)
+      const mrrArea = d3.area()
+        .x(d => xScale(d.date))
+        .y0(quantitativeHeight)
+        .y1(d => yScaleMRR(d.mrr))
+        .curve(d3.curveMonotoneX);
+
+      g.append('path')
+        .datum(quantitativeData)
+        .attr('fill', colors.teal)
+        .attr('fill-opacity', 0.1)
+        .attr('d', mrrArea);
+
+      // Active Users Line
+      const usersLine = d3.line()
+        .x(d => xScale(d.date))
+        .y(d => yScaleUsers(d.activeUsers))
+        .curve(d3.curveMonotoneX);
+
+      g.append('path')
+        .datum(quantitativeData)
+        .attr('fill', 'none')
+        .attr('stroke', colors.rose)
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '4,4')
+        .attr('d', usersLine);
+
+      // Hover overlay for tooltips
+      const bisect = d3.bisector(d => d.date).left;
+
+      g.append('rect')
+        .attr('width', width)
+        .attr('height', quantitativeHeight)
+        .attr('fill', 'transparent')
+        .on('mousemove', (event) => {
+          const [mx] = d3.pointer(event);
+          const date = xScale.invert(mx);
+          const index = bisect(quantitativeData, date);
+          const d = quantitativeData[Math.min(index, quantitativeData.length - 1)];
+
+          showTooltip(event, `
+            <div class="tooltip-title">${d3.timeFormat('%B %d')(d.date)}</div>
+            <div class="tooltip-content">
+              <span style="color: ${colors.teal}">MRR:</span> $${d.mrr.toLocaleString()}<br>
+              <span style="color: ${colors.rose}">Active Users:</span> ${d.activeUsers.toLocaleString()}
+            </div>
+          `);
+        })
+        .on('mouseleave', hideTooltip);
+
+      // X Axis
+      g.append('g')
+        .attr('transform', `translate(0,${quantitativeHeight})`)
+        .call(d3.axisBottom(xScale)
+          .ticks(d3.timeDay.every(2))
+          .tickFormat(d3.timeFormat('%b %d')))
+        .attr('color', colors.muted)
+        .selectAll('text')
+        .attr('fill', colors.muted)
+        .style('font-size', '10px');
+
+      // Y Axis (MRR - left)
+      g.append('g')
+        .call(d3.axisLeft(yScaleMRR)
+          .ticks(4)
+          .tickFormat(d => `$${d/1000}k`))
+        .attr('color', colors.teal)
+        .selectAll('text')
+        .attr('fill', colors.teal)
+        .style('font-size', '10px');
+
+      // Y Axis (Users - right)
+      g.append('g')
+        .attr('transform', `translate(${width},0)`)
+        .call(d3.axisRight(yScaleUsers)
+          .ticks(4)
+          .tickFormat(d => d.toLocaleString()))
+        .attr('color', colors.rose)
+        .selectAll('text')
+        .attr('fill', colors.rose)
+        .style('font-size', '10px');
+
+      // Legend on right side
+      const metricTypes = [
+        { key: 'mrr', label: 'MRR (Stripe)', color: colors.teal },
+        { key: 'activeUsers', label: 'Active Users (Mixpanel)', color: colors.rose }
+      ];
+      const legendX = width + 20;
+      const legendY = 20;
+      const legendSpacing = 18;
+
+      metricTypes.forEach((type, i) => {
+        const legendGroup = g.append('g')
+          .attr('transform', `translate(${legendX}, ${legendY + i * legendSpacing})`);
+
+        legendGroup.append('circle')
+          .attr('cx', 7)
+          .attr('cy', 7)
+          .attr('r', 5)
+          .attr('fill', type.color)
+          .attr('fill-opacity', 0.8);
+
+        legendGroup.append('text')
+          .attr('x', 20)
+          .attr('y', 11)
+          .attr('fill', colors.muted)
+          .attr('font-size', '11px')
+          .text(type.label);
+      });
+    }
+
+    // ========================================
+    // Traces Chart (Stacked Flame Graph)
+    // ========================================
+    function renderTracesChart() {
+      const svg = d3.select('#traces-chart')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', tracesHeight + margin.top + margin.bottom);
+
+      const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+      const barHeight = 14;
+      const barGap = 2;
+      const stepHeight = 10;
+
+      // Assign vertical lanes to traces to handle overlaps
+      // Use a greedy algorithm to pack traces into lanes
+      function assignLanes(traces) {
+        const lanes = [];
+
+        traces.forEach(trace => {
+          // Find the first lane where this trace fits (no overlap)
+          let assignedLane = -1;
+
+          for (let i = 0; i < lanes.length; i++) {
+            const lastTraceInLane = lanes[i][lanes[i].length - 1];
+            // Add some padding between traces
+            if (trace.startTime >= new Date(lastTraceInLane.endTime.getTime() + 3600000)) {
+              assignedLane = i;
+              break;
+            }
+          }
+
+          if (assignedLane === -1) {
+            // Create a new lane
+            assignedLane = lanes.length;
+            lanes.push([]);
+          }
+
+          trace.lane = assignedLane;
+          lanes[assignedLane].push(trace);
+        });
+
+        return lanes.length;
+      }
+
+      const numLanes = assignLanes(tracesData);
+
+      // Limit to max lanes that fit in the chart height
+      const maxLanes = Math.floor(tracesHeight / (barHeight + barGap));
+
+      // Filter traces to only show those in visible lanes
+      const visibleTraces = tracesData.filter(t => t.lane < maxLanes);
+
+      // Track expanded traces
+      const expandedTraces = new Set();
+
+      // Render function (called on expand/collapse)
+      function render() {
+        g.selectAll('*').remove();
+
+        // Y-axis title
+        g.append('text')
+          .attr('transform', 'rotate(-90)')
+          .attr('x', -tracesHeight / 2)
+          .attr('y', -55)
+          .attr('text-anchor', 'middle')
+          .attr('fill', colors.white)
+          .attr('font-size', '13px')
+          .attr('font-weight', '500')
+          .text('Traces');
+
+        // Grid lines (vertical, for time)
+        const timeGridLines = xScale.ticks(d3.timeDay.every(2));
+        g.selectAll('.time-grid')
+          .data(timeGridLines)
+          .join('line')
+          .attr('class', 'time-grid')
+          .attr('x1', d => xScale(d))
+          .attr('x2', d => xScale(d))
+          .attr('y1', 0)
+          .attr('y2', tracesHeight)
+          .attr('stroke', colors.border)
+          .attr('stroke-opacity', 0.3);
+
+        // Calculate y positions accounting for expanded traces
+        let currentY = 0;
+        const tracePositions = new Map();
+
+        // Sort by lane, then by start time
+        const sortedTraces = [...visibleTraces].sort((a, b) => {
+          if (a.lane !== b.lane) return a.lane - b.lane;
+          return a.startTime - b.startTime;
+        });
+
+        let currentLane = -1;
+        sortedTraces.forEach(trace => {
+          if (trace.lane !== currentLane) {
+            currentLane = trace.lane;
+            currentY = trace.lane * (barHeight + barGap);
+          }
+
+          tracePositions.set(trace.id, currentY);
+
+          if (expandedTraces.has(trace.id)) {
+            currentY += barHeight + stepHeight + barGap;
+          }
+        });
+
+        // Render trace bars
+        const traceGroups = g.selectAll('.trace-group')
+          .data(visibleTraces)
+          .join('g')
+          .attr('class', 'trace-group')
+          .attr('transform', d => `translate(0, ${tracePositions.get(d.id)})`);
+
+        // Main trace bar
+        traceGroups.append('rect')
+          .attr('class', 'trace-bar')
+          .attr('x', d => xScale(d.startTime))
+          .attr('y', 0)
+          .attr('width', d => Math.max(4, xScale(d.endTime) - xScale(d.startTime)))
+          .attr('height', barHeight)
+          .attr('rx', 4)
+          .attr('fill', d => agentColors[d.agentType])
+          .attr('fill-opacity', 0.8)
+          .attr('stroke', d => d.status === 'error' ? colors.rose : 'none')
+          .attr('stroke-width', 2)
+          .on('mouseenter', (event, d) => {
+            const durationHours = (d.duration / 1000 / 60 / 60).toFixed(1);
+            showTooltip(event, `
+              <div class="tooltip-title">${agentLabels[d.agentType]}</div>
+              <div class="tooltip-content">
+                Duration: ${durationHours} hours<br>
+                Steps: ${d.steps.length}<br>
+                Status: <span style="color: ${d.status === 'success' ? colors.teal : colors.rose}">${d.status}</span>
+              </div>
+              <div class="tooltip-meta">
+                ${d3.timeFormat('%b %d %H:%M')(d.startTime)} → ${d3.timeFormat('%b %d %H:%M')(d.endTime)}<br>
+                Click to ${expandedTraces.has(d.id) ? 'collapse' : 'expand'} steps
+              </div>
+            `);
+          })
+          .on('mouseleave', hideTooltip)
+          .on('click', (event, d) => {
+            if (expandedTraces.has(d.id)) {
+              expandedTraces.delete(d.id);
+            } else {
+              expandedTraces.add(d.id);
+            }
+            render();
+          })
+          .on('contextmenu', (event, d) => {
+            event.preventDefault();
+            openDetailPanel(d, 'trace');
+          });
+
+        // Agent label on bar (if wide enough)
+        traceGroups.append('text')
+          .attr('class', 'trace-label')
+          .attr('x', d => xScale(d.startTime) + 6)
+          .attr('y', barHeight / 2 + 4)
+          .text(d => {
+            const barWidth = xScale(d.endTime) - xScale(d.startTime);
+            if (barWidth > 80) return agentLabels[d.agentType];
+            if (barWidth > 40) return d.agentType.split('_')[0];
+            return '';
+          })
+          .attr('fill', colors.white)
+          .attr('font-size', '10px');
+
+        // Render steps for expanded traces
+        visibleTraces.filter(d => expandedTraces.has(d.id)).forEach(trace => {
+          const traceY = tracePositions.get(trace.id);
+
+          g.selectAll(`.step-${trace.id}`)
+            .data(trace.steps)
+            .join('rect')
+            .attr('class', `trace-step step-${trace.id}`)
+            .attr('x', d => xScale(d.startTime))
+            .attr('y', traceY + barHeight + 2)
+            .attr('width', d => Math.max(2, xScale(d.endTime) - xScale(d.startTime)))
+            .attr('height', stepHeight)
+            .attr('rx', 2)
+            .attr('fill', d => d.status === 'success' ? agentColors[trace.agentType] : colors.rose)
+            .attr('fill-opacity', 0.5)
+            .attr('stroke', agentColors[trace.agentType])
+            .attr('stroke-width', 1)
+            .on('mouseenter', (event, d) => {
+              const stepDuration = ((d.endTime - d.startTime) / 1000 / 60).toFixed(1);
+              showTooltip(event, `
+                <div class="tooltip-title">${d.name}</div>
+                <div class="tooltip-content">
+                  Duration: ${stepDuration} min<br>
+                  Status: <span style="color: ${d.status === 'success' ? colors.teal : colors.rose}">${d.status}</span>
+                </div>
+              `);
+            })
+            .on('mouseleave', hideTooltip);
+
+          // Step labels
+          g.selectAll(`.step-label-${trace.id}`)
+            .data(trace.steps)
+            .join('text')
+            .attr('class', `trace-label step-label-${trace.id}`)
+            .attr('x', d => xScale(d.startTime) + 4)
+            .attr('y', traceY + barHeight + 2 + stepHeight / 2 + 3)
+            .text(d => {
+              const stepWidth = xScale(d.endTime) - xScale(d.startTime);
+              if (stepWidth > 60) return d.name;
+              if (stepWidth > 30) return d.name.substring(0, 6);
+              return '';
+            })
+            .attr('fill', colors.white)
+            .attr('font-size', '9px');
+        });
+
+        // X Axis
+        g.append('g')
+          .attr('transform', `translate(0,${tracesHeight})`)
+          .call(d3.axisBottom(xScale)
+            .ticks(d3.timeDay.every(2))
+            .tickFormat(d3.timeFormat('%b %d')))
+          .attr('color', colors.muted)
+          .selectAll('text')
+          .attr('fill', colors.muted)
+          .style('font-size', '10px');
+
+        // Legend on right side
+        const legendX = width + 20;
+        const legendY = 20;
+        const legendSpacing = 18;
+
+        agentTypes.forEach((agentType, i) => {
+          const legendGroup = g.append('g')
+            .attr('transform', `translate(${legendX}, ${legendY + i * legendSpacing})`);
+
+          legendGroup.append('rect')
+            .attr('width', 14)
+            .attr('height', 14)
+            .attr('rx', 3)
+            .attr('fill', agentColors[agentType])
+            .attr('fill-opacity', 0.8);
+
+          legendGroup.append('text')
+            .attr('x', 20)
+            .attr('y', 11)
+            .attr('fill', colors.muted)
+            .attr('font-size', '11px')
+            .text(agentLabels[agentType]);
+        });
+      }
+
+      render();
+    }
+
+    // ========================================
+    // Qualitative Chart (Stream Graph + Jittered Dots)
+    // ========================================
+    function renderQualitativeChart() {
+      const svg = d3.select('#qualitative-chart')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', qualitativeHeight + margin.top + margin.bottom);
+
+      const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+      // Y-axis title
+      g.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -qualitativeHeight / 2)
+        .attr('y', -55)
+        .attr('text-anchor', 'middle')
+        .attr('fill', colors.white)
+        .attr('font-size', '13px')
+        .attr('font-weight', '500')
+        .text('Qualitative');
+
+      // Color scale for sources
+      const sourceColors = {
+        intercom: colors.orange,
+        dovetail: colors.violet,
+        sales: colors.teal
+      };
+
+      // Stack the data for stream graph
+      const stack = d3.stack()
+        .keys(sources)
+        .offset(d3.stackOffsetWiggle)
+        .order(d3.stackOrderInsideOut);
+
+      const stacked = stack(qualitativeAggregated);
+
+      // Y scale for stream
+      const yMin = d3.min(stacked, layer => d3.min(layer, d => d[0]));
+      const yMax = d3.max(stacked, layer => d3.max(layer, d => d[1]));
+
+      const yScale = d3.scaleLinear()
+        .domain([yMin, yMax])
+        .range([qualitativeHeight, 0]);
+
+      // Area generator
+      const area = d3.area()
+        .x(d => xScale(d.data.date))
+        .y0(d => yScale(d[0]))
+        .y1(d => yScale(d[1]))
+        .curve(d3.curveBasis);
+
+      // Render stream layers
+      g.selectAll('.stream-layer')
+        .data(stacked)
+        .join('path')
+        .attr('class', 'stream-layer')
+        .attr('d', area)
+        .attr('fill', d => sourceColors[d.key])
+        .attr('fill-opacity', 0.4)
+        .attr('stroke', d => sourceColors[d.key])
+        .attr('stroke-width', 1)
+        .attr('stroke-opacity', 0.6);
+
+      // Calculate y positions for jittered dots within each stream band
+      function getYPositionForDot(d) {
+        // Find the stack layer for this source
+        const layerIndex = sources.indexOf(d.source);
+        const layer = stacked[layerIndex];
+
+        // Find the data point for this date
+        const dayIndex = days.findIndex(day =>
+          day.getTime() <= d.date.getTime() &&
+          d.date.getTime() < day.getTime() + 86400000
+        );
+
+        if (dayIndex === -1 || !layer[dayIndex]) {
+          return qualitativeHeight / 2;
+        }
+
+        const bandTop = yScale(layer[dayIndex][1]);
+        const bandBottom = yScale(layer[dayIndex][0]);
+        const bandHeight = bandBottom - bandTop;
+
+        // Jitter within the band
+        const jitter = (Math.random() - 0.5) * bandHeight * 0.7;
+        return (bandTop + bandBottom) / 2 + jitter;
+      }
+
+      // Render jittered dots
+      g.selectAll('.qual-dot')
+        .data(qualitativeData)
+        .join('circle')
+        .attr('class', 'qual-dot')
+        .attr('cx', d => xScale(d.date))
+        .attr('cy', d => getYPositionForDot(d))
+        .attr('r', 4)
+        .attr('fill', d => sourceColors[d.source])
+        .attr('stroke', colors.velvetMid)
+        .attr('stroke-width', 1)
+        .on('mouseenter', (event, d) => {
+          showTooltip(event, `
+            <div class="tooltip-title">${d.title}</div>
+            <div class="tooltip-content">
+              ${d.source} · ${d.signalsExtracted} signals extracted
+            </div>
+            <div class="tooltip-meta">
+              ${d3.timeFormat('%B %d, %Y at %H:%M')(d.date)}<br>
+              Click for details
+            </div>
+          `);
+        })
+        .on('mouseleave', hideTooltip)
+        .on('click', (event, d) => openDetailPanel(d, 'qualitative'));
+
+      // X Axis
+      g.append('g')
+        .attr('transform', `translate(0,${qualitativeHeight})`)
+        .call(d3.axisBottom(xScale)
+          .ticks(d3.timeDay.every(2))
+          .tickFormat(d3.timeFormat('%b %d')))
+        .attr('color', colors.muted)
+        .selectAll('text')
+        .attr('fill', colors.muted)
+        .style('font-size', '10px');
+
+      // Legend on right side
+      const sourceTypes = [
+        { key: 'intercom', label: 'Intercom', color: colors.orange },
+        { key: 'dovetail', label: 'Dovetail', color: colors.violet },
+        { key: 'sales', label: 'Sales Calls', color: colors.teal }
+      ];
+      const legendX = width + 20;
+      const legendY = 20;
+      const legendSpacing = 18;
+
+      sourceTypes.forEach((type, i) => {
+        const legendGroup = g.append('g')
+          .attr('transform', `translate(${legendX}, ${legendY + i * legendSpacing})`);
+
+        legendGroup.append('circle')
+          .attr('cx', 7)
+          .attr('cy', 7)
+          .attr('r', 5)
+          .attr('fill', type.color)
+          .attr('fill-opacity', 0.8);
+
+        legendGroup.append('text')
+          .attr('x', 20)
+          .attr('y', 11)
+          .attr('fill', colors.muted)
+          .attr('font-size', '11px')
+          .text(type.label);
+      });
+    }
+
+    // ========================================
+    // Initialize
+    // ========================================
+    renderSignalsChart();
+    renderQuantitativeChart();
+    renderTracesChart();
+    renderQualitativeChart();
+  </script>
+</body>
+</html>

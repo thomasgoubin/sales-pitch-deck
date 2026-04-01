@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report Lineage — Naptha</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+  <style>
+    :root {
+      --velvet: #0A0A0F;
+      --velvet-mid: #111118;
+      --velvet-light: #1A1A24;
+      --orange: #FF6B35;
+      --violet: #8B5CF6;
+      --rose: #EC4899;
+      --teal: #00BFA5;
+      --text-on-dark: #FFFFFF;
+      --text-muted: #9999AA;
+      --text-secondary: #555566;
+      --border-dark: #1E1E2A;
+      --report-width: 38%;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--velvet);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--text-on-dark);
+      overflow: hidden;
+      display: flex;
+    }
+
+    /* Left side - Sankey + Quote display */
+    #graph-container {
+      width: calc(100vw - var(--report-width));
+      height: 100vh;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #sankey-area {
+      flex: 1;
+      position: relative;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Quote display panel (shows when clicking) */
+    #quote-display {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--velvet-mid);
+      border-top: 1px solid var(--border-dark);
+      padding: 16px 24px;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      max-height: 40%;
+      overflow-y: auto;
+    }
+
+    #quote-display.visible {
+      transform: translateY(0);
+    }
+
+    .quote-display-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .quote-display-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .quote-display-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    .quote-display-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .quote-display-type {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: var(--velvet);
+    }
+
+    .quote-display-close {
+      background: var(--velvet);
+      border: 1px solid var(--border-dark);
+      color: var(--text-muted);
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .quote-display-close:hover {
+      color: var(--text-on-dark);
+    }
+
+    .quote-display-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    .quote-card {
+      background: var(--velvet);
+      border: 1px solid var(--border-dark);
+      border-left: 3px solid var(--orange);
+      border-radius: 0 8px 8px 0;
+      padding: 12px 14px;
+    }
+
+    .quote-card-text {
+      font-size: 12px;
+      font-style: italic;
+      line-height: 1.5;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .quote-card-source {
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+
+    .quote-card-source span {
+      color: var(--text-muted);
+    }
+
+    /* Sankey styles */
+    .sankey-link {
+      fill: none;
+      stroke-opacity: 0.4;
+      transition: stroke-opacity 0.2s ease;
+    }
+
+    .sankey-link:hover {
+      stroke-opacity: 0.7;
+    }
+
+    .sankey-link.dimmed {
+      stroke-opacity: 0.08;
+    }
+
+    .sankey-link.highlighted {
+      stroke-opacity: 0.8;
+    }
+
+    .sankey-node {
+      cursor: pointer;
+    }
+
+    .sankey-node rect {
+      fill: var(--velvet-mid);
+      stroke-width: 2;
+      rx: 6;
+      transition: all 0.2s ease;
+    }
+
+    .sankey-node:hover rect {
+      filter: brightness(1.3);
+    }
+
+    .sankey-node.selected rect {
+      stroke-width: 3;
+    }
+
+    .sankey-node.dimmed {
+      opacity: 0.25;
+    }
+
+    .sankey-node text {
+      fill: var(--text-on-dark);
+      font-size: 10px;
+      font-weight: 500;
+      pointer-events: none;
+    }
+
+    .sankey-node .node-sublabel {
+      fill: var(--text-muted);
+      font-size: 8px;
+      font-weight: 400;
+    }
+
+    .column-label {
+      fill: var(--text-secondary);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 500;
+    }
+
+    /* Mini legend */
+    .mini-legend {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      display: flex;
+      gap: 12px;
+      background: rgba(17, 17, 24, 0.9);
+      border: 1px solid var(--border-dark);
+      border-radius: 8px;
+      padding: 8px 12px;
+      z-index: 100;
+      font-size: 9px;
+    }
+
+    .mini-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-muted);
+    }
+
+    .mini-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    /* Right side - Report panel */
+    .report-panel {
+      width: var(--report-width);
+      height: 100vh;
+      background: var(--velvet-mid);
+      border-left: 1px solid var(--border-dark);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .report-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-dark);
+      background: linear-gradient(135deg, rgba(255, 107, 53, 0.08), rgba(236, 72, 153, 0.08), rgba(139, 92, 246, 0.08));
+    }
+
+    .report-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .report-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .report-metrics {
+      display: flex;
+      gap: 12px;
+    }
+
+    .report-metric-box {
+      flex: 1;
+      background: var(--velvet);
+      border: 1px solid var(--border-dark);
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .report-metric-value {
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--orange), var(--rose), var(--violet));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .report-metric-label {
+      font-size: 9px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .report-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+    }
+
+    .report-section {
+      margin-bottom: 20px;
+    }
+
+    .report-section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-dark);
+    }
+
+    .report-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      flex: 1;
+    }
+
+    .report-section-badge {
+      font-size: 9px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--velvet);
+    }
+
+    /* Executive summary */
+    .exec-summary {
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .exec-summary strong {
+      color: var(--text-on-dark);
+    }
+
+    /* Themes */
+    .insight-item {
+      background: var(--velvet);
+      border: 1px solid var(--border-dark);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .insight-item:hover {
+      border-color: var(--text-secondary);
+    }
+
+    .insight-item.highlighted {
+      border-color: var(--rose);
+      box-shadow: 0 0 20px rgba(236, 72, 153, 0.15);
+    }
+
+    .insight-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .insight-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-on-dark);
+      flex: 1;
+    }
+
+    .insight-metric {
+      font-size: 9px;
+      color: var(--violet);
+      background: rgba(139, 92, 246, 0.15);
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .insight-desc {
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .insight-sources {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .insight-source-tag {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 9px;
+      color: var(--text-secondary);
+      background: var(--velvet-mid);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .insight-source-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 2px;
+      background: var(--orange);
+    }
+
+    /* Recommendations */
+    .rec-item {
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+      background: var(--velvet);
+      border: 1px solid var(--border-dark);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .rec-item:hover {
+      border-color: var(--text-secondary);
+    }
+
+    .rec-item.highlighted {
+      border-color: var(--teal);
+      box-shadow: 0 0 20px rgba(0, 191, 165, 0.15);
+    }
+
+    .rec-priority {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .rec-priority.p0 {
+      background: rgba(236, 72, 153, 0.2);
+      color: var(--rose);
+    }
+
+    .rec-priority.p1 {
+      background: rgba(139, 92, 246, 0.2);
+      color: var(--violet);
+    }
+
+    .rec-priority.p2 {
+      background: rgba(0, 191, 165, 0.2);
+      color: var(--teal);
+    }
+
+    .rec-content {
+      flex: 1;
+    }
+
+    .rec-title {
+      font-size: 11px;
+      font-weight: 500;
+      margin-bottom: 3px;
+    }
+
+    .rec-desc {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* Inline quotes in report */
+    .inline-quote {
+      position: relative;
+      padding: 10px 12px 10px 16px;
+      background: var(--velvet);
+      border: 1px solid var(--border-dark);
+      border-left: 3px solid var(--orange);
+      border-radius: 0 6px 6px 0;
+      margin: 10px 0;
+      font-size: 11px;
+      font-style: italic;
+      color: var(--text-muted);
+      line-height: 1.5;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .inline-quote:hover {
+      border-color: var(--text-secondary);
+      border-left-color: var(--orange);
+    }
+
+    .inline-quote.highlighted {
+      background: rgba(255, 107, 53, 0.08);
+    }
+
+    .inline-quote-source {
+      display: block;
+      margin-top: 6px;
+      font-style: normal;
+      font-size: 9px;
+      color: var(--text-secondary);
+    }
+
+    /* Analysis table */
+    .analysis-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+      margin-top: 8px;
+    }
+
+    .analysis-table th {
+      text-align: left;
+      padding: 8px 6px;
+      background: var(--velvet);
+      border: 1px solid var(--border-dark);
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .analysis-table td {
+      padding: 8px 6px;
+      border: 1px solid var(--border-dark);
+      color: var(--text-muted);
+    }
+
+    .analysis-table tr:hover td {
+      background: var(--velvet-light);
+    }
+
+    .risk-badge {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .risk-badge.critical {
+      background: rgba(236, 72, 153, 0.2);
+      color: var(--rose);
+    }
+
+    .risk-badge.high {
+      background: rgba(255, 107, 53, 0.2);
+      color: var(--orange);
+    }
+
+    .risk-badge.medium {
+      background: rgba(139, 92, 246, 0.2);
+      color: var(--violet);
+    }
+  </style>
+</head>
+<body>
+  <!-- Left side - Sankey + Quote display -->
+  <div id="graph-container">
+    <div id="sankey-area">
+      <svg id="graph"></svg>
+
+      <!-- Mini legend -->
+      <div class="mini-legend">
+        <div class="mini-legend-item">
+          <div class="mini-legend-dot" style="background: var(--orange);"></div>
+          <span>Sources</span>
+        </div>
+        <div class="mini-legend-item">
+          <div class="mini-legend-dot" style="background: var(--violet);"></div>
+          <span>Signals</span>
+        </div>
+        <div class="mini-legend-item">
+          <div class="mini-legend-dot" style="background: var(--rose);"></div>
+          <span>Insights</span>
+        </div>
+        <div class="mini-legend-item">
+          <div class="mini-legend-dot" style="background: var(--teal);"></div>
+          <span>Report</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quote display panel -->
+    <div id="quote-display">
+      <div class="quote-display-header">
+        <div class="quote-display-title">
+          <div class="quote-display-dot" id="quote-dot"></div>
+          <span class="quote-display-name" id="quote-name"></span>
+          <span class="quote-display-type" id="quote-type"></span>
+        </div>
+        <button class="quote-display-close" id="quote-close">×</button>
+      </div>
+      <div class="quote-display-grid" id="quote-grid"></div>
+    </div>
+  </div>
+
+  <!-- Right side - Report panel -->
+  <div class="report-panel">
+    <div class="report-header">
+      <div class="report-title">Voice of Customer Report</div>
+      <div class="report-subtitle">Analysis of 50 customer transcripts combined with support ticket data and platform analytics</div>
+      <div class="report-metrics">
+        <div class="report-metric-box">
+          <div class="report-metric-value">50</div>
+          <div class="report-metric-label">Sources Analyzed</div>
+        </div>
+        <div class="report-metric-box">
+          <div class="report-metric-value">13</div>
+          <div class="report-metric-label">Pain Points</div>
+        </div>
+        <div class="report-metric-box">
+          <div class="report-metric-value">9</div>
+          <div class="report-metric-label">Opportunities</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-content">
+      <!-- Executive Summary -->
+      <div class="report-section">
+        <div class="report-section-header">
+          <div class="report-section-title">Executive Summary</div>
+        </div>
+        <div class="exec-summary">
+          Customers are <strong>overwhelmingly positive</strong> about the core AI voice agent and call routing capabilities, but are blocked—or at risk of churn—by gaps in four key areas: <strong>language support, CRM integration depth, compliance certifications, and escalation quality</strong>. These are not isolated feature requests; they are expansion blockers and churn drivers.
+        </div>
+        <div class="inline-quote" data-source="gong" data-quotes="qbr-1">
+          "Over Q1, your voice agents handled 47,300 customer calls with an average resolution rate of 73%. Your call routing feature has been particularly effective."
+          <span class="inline-quote-source">— QBR — ACC-0175 via Gong</span>
+        </div>
+      </div>
+
+      <!-- Key Insights -->
+      <div class="report-section">
+        <div class="report-section-header">
+          <div class="report-section-title">Key Insights</div>
+          <div class="report-section-badge" style="color: var(--rose);">5 identified</div>
+        </div>
+
+        <div class="insight-item" data-insight="ins-multilingual" data-sources="intercom,gong,zendesk,confluence">
+          <div class="insight-header">
+            <div class="insight-title">Multilingual is Expansion Blocker</div>
+            <div class="insight-metric">12 mentions, Q2 OKR aligned</div>
+          </div>
+          <div class="insight-desc">Spanish language support appears in 12+ customer requests and aligns with Q2 Healthcare Vertical OKR. BPO and healthcare accounts explicitly blocked from expanding.</div>
+          <div class="insight-sources">
+            <div class="insight-source-tag"><div class="insight-source-dot"></div>Intercom</div>
+            <div class="insight-source-tag"><div class="insight-source-dot"></div>Gong</div>
+            <div class="insight-source-tag"><div class="insight-source-dot"></div>Zendesk</div>
+            <div class="insight-source-tag"><div class="insight-source-dot" style="background: var(--teal);"></div>Confluence</div>
+          </div>
+        </div>
+
+        <div class="insight-item" data-insight="ins-crm-retention" data-sources="intercom,zendesk,slack,confluence">
+          <div class="insight-header">
+            <div class="insight-title">CRM Depth Drives Retention</div>
+            <div class="insight-metric">18 requests, Strategic bet</div>
+          </div>
+          <div class="insight-desc">Salesforce sync requests and manual CRM logging complaints correlate with churn risk. Enterprise readiness strategic bet reinforces priority.</div>
+          <div class="insight-sources">
+            <div class="insight-source-tag"><div class="insight-source-dot"></div>Intercom</div>
+            <div class="insight-source-tag"><div class="insight-source-dot"></div>Zendesk</div>
+            <div class="insight-source-tag"><div class="insight-source-dot"></div>Slack</div>
+            <div class="insight-source-tag"><div class="insight-source-dot" style="background: var(--teal);"></div>Confluence</div>
+          </div>
+        </div>
+
+        <div class="insight-item" data-insight="ins-compliance-gap" data-sources="gong,zendesk,confluence">
+          <div class="insight-header">
+            <div class="insight-title">Compliance Gaps Stall Deals</div>
+            <div class="insight-metric">8 deals blocked, OKR critical</div>
+          </div>
+          <div class="insight-desc">HIPAA BAA and SSO/SAML requests blocking $2.4M pipeline. Healthcare vertical OKR and enterprise bet both depend on resolving compliance gaps.</div>
+          <div class="insight-sources">
+            <div class="insight-source-tag"><div class="insight-source-dot"></div>Gong</div>
+            <div class="insight-source-tag"><div class="insight-source-dot"></div>Zendesk</div>
+            <div class="insight-source-tag"><div class="insight-source-dot" style="background: var(--teal);"></div>Confluence</div>
+          </div>
+        </div>
+
+        <div class="insight-item" data-insight="ins-escalation-cx" data-sources="intercom,posthog,slack">
+          <div class="insight-header">
+            <div class="insight-title">Escalation Quality is CX Risk</div>
+            <div class="insight-metric">7 tickets, CSAT impact</div>
+          </div>
+          <div class="insight-desc">Cold transfer complaints are the top source of end-customer complaints. Callers repeat their issue from scratch when escalated to humans.</div>
+          <div class="insight-sources">
+            <div class="insight-source-tag"><div class="insight-source-dot"></div>Intercom</div>
+            <div class="insight-source-tag"><div class="insight-source-dot"></div>PostHog</div>
+            <div class="insight-source-tag"><div class="insight-source-dot"></div>Slack</div>
+          </div>
+        </div>
+
+        <div class="insight-item" data-insight="ins-activation" data-sources="posthog">
+          <div class="insight-header">
+            <div class="insight-title">Activation Gap Hurts Retention</div>
+            <div class="insight-metric">34% drop-off rate</div>
+          </div>
+          <div class="insight-desc">Onboarding step 3 shows 34% drop-off. Users who complete it have 3x higher retention at day 30. Time-to-value is critical.</div>
+          <div class="insight-sources">
+            <div class="insight-source-tag"><div class="insight-source-dot"></div>PostHog</div>
+          </div>
+        </div>
+
+        <div class="inline-quote" data-source="confluence" data-quotes="strategy-1">
+          "Q2 OKR: Expand into healthcare vertical with HIPAA-compliant offering. Enterprise readiness is the key unlock for $100K+ deals."
+          <span class="inline-quote-source">— Strategy — Board Deck via Confluence</span>
+        </div>
+      </div>
+
+      <!-- Analysis -->
+      <div class="report-section">
+        <div class="report-section-header">
+          <div class="report-section-title">Analysis by Segment</div>
+        </div>
+        <table class="analysis-table">
+          <thead>
+            <tr>
+              <th>Segment</th>
+              <th>Top Pain Point</th>
+              <th>Risk Level</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>BPO / Call Center</td>
+              <td>Multilingual Support</td>
+              <td><span class="risk-badge high">High</span></td>
+            </tr>
+            <tr>
+              <td>Healthcare</td>
+              <td>HIPAA/Compliance</td>
+              <td><span class="risk-badge critical">Critical</span></td>
+            </tr>
+            <tr>
+              <td>Financial Services</td>
+              <td>Compliance/SOC2</td>
+              <td><span class="risk-badge critical">Critical</span></td>
+            </tr>
+            <tr>
+              <td>Retail / E-Commerce</td>
+              <td>Voice Quality</td>
+              <td><span class="risk-badge medium">Medium</span></td>
+            </tr>
+            <tr>
+              <td>Enterprise</td>
+              <td>CRM Integration</td>
+              <td><span class="risk-badge high">High</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Recommendations -->
+      <div class="report-section">
+        <div class="report-section-header">
+          <div class="report-section-title">Recommendations</div>
+          <div class="report-section-badge" style="color: var(--teal);">6 actions</div>
+        </div>
+
+        <div class="rec-item" data-rec="rec-compliance" data-sources="gong,zendesk,confluence">
+          <div class="rec-priority p0">P0</div>
+          <div class="rec-content">
+            <div class="rec-title">Launch HIPAA/SOC2 Compliance Package</div>
+            <div class="rec-desc">Unblocks healthcare OKR and 8 enterprise deals worth $2.4M. Strategic bet dependent.</div>
+          </div>
+        </div>
+
+        <div class="rec-item" data-rec="rec-escalation" data-sources="intercom,posthog,slack">
+          <div class="rec-priority p0">P0</div>
+          <div class="rec-content">
+            <div class="rec-title">Ship Warm Transfer with Context Handoff</div>
+            <div class="rec-desc">Cold transfer complaints are #1 source of CSAT decline. Quick win for CX.</div>
+          </div>
+        </div>
+
+        <div class="rec-item" data-rec="rec-multilingual" data-sources="intercom,gong,zendesk,confluence">
+          <div class="rec-priority p0">P0</div>
+          <div class="rec-content">
+            <div class="rec-title">Expand Spanish Language Support</div>
+            <div class="rec-desc">12 customer mentions + healthcare OKR alignment. Expansion blocker for BPO segment.</div>
+          </div>
+        </div>
+
+        <div class="rec-item" data-rec="rec-crm" data-sources="intercom,zendesk,slack,confluence">
+          <div class="rec-priority p1">P1</div>
+          <div class="rec-content">
+            <div class="rec-title">Build Native Salesforce Bi-Directional Sync</div>
+            <div class="rec-desc">18 requests for Salesforce sync. Manual logging cited in 10 churn-risk accounts.</div>
+          </div>
+        </div>
+
+        <div class="rec-item" data-rec="rec-sso" data-sources="gong,zendesk,confluence">
+          <div class="rec-priority p1">P1</div>
+          <div class="rec-content">
+            <div class="rec-title">Ship SSO/SAML for Enterprise Tier</div>
+            <div class="rec-desc">22 explicit requests. Competitive table stakes - top 3 competitors have it.</div>
+          </div>
+        </div>
+
+        <div class="rec-item" data-rec="rec-onboarding" data-sources="posthog">
+          <div class="rec-priority p2">P2</div>
+          <div class="rec-content">
+            <div class="rec-title">Redesign Onboarding Step 3</div>
+            <div class="rec-desc">34% drop-off rate. Users who complete have 3x retention. Time-to-value critical.</div>
+          </div>
+        </div>
+
+        <div class="inline-quote" data-source="confluence" data-quotes="strategy-2">
+          "Competitive analysis: Top 3 competitors all have SSO and multilingual support. Enterprise readiness is the key unlock for $100K+ deals."
+          <span class="inline-quote-source">— Strategy — Market Analysis via Confluence</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const colors = {
+      source: '#FF6B35',
+      signal: '#8B5CF6',
+      insight: '#EC4899',
+      report: '#00BFA5',
+      velvet: '#0A0A0F',
+      velvetMid: '#111118',
+      velvetLight: '#1A1A24',
+      textMuted: '#9999AA'
+    };
+
+    // Sample quotes for each source
+    const sourceQuotes = {
+      intercom: [
+        { text: "The multi-language support would be huge for us. We serve a diverse patient population, especially Spanish speakers in our Texas and California facilities.", source: "Onboarding — ACC-0100" },
+        { text: "We need to export all our data before renewal. If we can't get it out, we're not renewing.", source: "Escalation — ACC-0089" },
+        { text: "I logged in briefly but didn't want to break anything. The dashboard looks comprehensive but I wasn't sure where to start.", source: "Onboarding — ACC-0036" },
+        { text: "Our sales team really needs the voice agents to have context from previous interactions.", source: "Onboarding — ACC-0133" }
+      ],
+      gong: [
+        { text: "Over Q1, your voice agents handled 47,300 customer calls with an average resolution rate of 73%.", source: "QBR — ACC-0175" },
+        { text: "The advisors were initially skeptical, but when they saw the AI agents handling routine inquiries, they became advocates.", source: "Onboarding — ACC-0121" },
+        { text: "What about voice quality? Our clients are pretty particular about the caller experience.", source: "Onboarding — ACC-0200" },
+        { text: "Approximately $28,000 in cost savings for this quarter alone. That puts you on track for strong annual return.", source: "QBR — ACC-0175" }
+      ],
+      zendesk: [
+        { text: "Ticket #4521: Can we get Spanish language support? We have a large Hispanic customer base.", source: "Support Ticket" },
+        { text: "Ticket #4498: Need bulk export for compliance audit next month.", source: "Support Ticket" },
+        { text: "Ticket #4467: When is Salesforce integration coming? We need call data synced automatically.", source: "Support Ticket" }
+      ],
+      slack: [
+        { text: "#support-escalations: Another customer churned this week - cited missing Salesforce integration as the reason.", source: "Internal Channel" },
+        { text: "#product-feedback: Enterprise prospect needs SAML before signing. Third time this month.", source: "Internal Channel" },
+        { text: "#sales: Lost deal to competitor - they had SSO and we didn't.", source: "Internal Channel" }
+      ],
+      hubspot: [
+        { text: "Deal note: Waiting on native CRM integration before expanding seats.", source: "Deal — OPP-2341" },
+        { text: "Contact activity: Downloaded security whitepaper 3x, likely compliance concern.", source: "Contact — ACC-0156" },
+        { text: "Lead score dropped after pricing call - mentioned needing bi-directional sync.", source: "Lead — ACC-0178" }
+      ],
+      posthog: [
+        { text: "Session replay: Users rage-clicking the export button - expected immediate download.", source: "Session Recording" },
+        { text: "Funnel analysis: 67% drop-off at onboarding step 3 (configuration).", source: "Product Analytics" },
+        { text: "Heatmap: Settings page barely explored - users not finding advanced options.", source: "Product Analytics" }
+      ],
+      confluence: [
+        { text: "Q2 OKR: Expand into healthcare vertical with HIPAA-compliant offering.", source: "Strategy — OKR Doc" },
+        { text: "Strategic Bet: Enterprise readiness is the key unlock for $100K+ deals.", source: "Strategy — Board Deck" },
+        { text: "2025 Objective: Reduce onboarding time-to-value from 14 days to 3 days.", source: "Strategy — Product Roadmap" },
+        { text: "Competitive analysis: Top 3 competitors all have SSO and multilingual support.", source: "Strategy — Market Analysis" }
+      ]
+    };
+
+    // Sankey data
+    const nodes = [
+      // Customer-facing sources
+      { id: 'intercom', name: 'Intercom', type: 'source', column: 0 },
+      { id: 'gong', name: 'Gong', type: 'source', column: 0 },
+      { id: 'zendesk', name: 'Zendesk', type: 'source', column: 0 },
+      { id: 'slack', name: 'Slack', type: 'source', column: 0 },
+      { id: 'posthog', name: 'PostHog', type: 'source', column: 0 },
+      // Strategic source
+      { id: 'confluence', name: 'Confluence', type: 'source', column: 0 },
+
+      // Signal types
+      { id: 'sig-feature-request', name: 'Feature request', type: 'signal', column: 1, metric: '47 extracted' },
+      { id: 'sig-pain-point', name: 'Pain point', type: 'signal', column: 1, metric: '23 extracted' },
+      { id: 'sig-objective', name: 'Objective', type: 'signal', column: 1, metric: '4 active' },
+      { id: 'sig-strategic-bet', name: 'Strategic bet', type: 'signal', column: 1, metric: '2 active' },
+
+      // Insights
+      { id: 'ins-multilingual', name: 'Multilingual is expansion blocker', type: 'insight', column: 2 },
+      { id: 'ins-crm-retention', name: 'CRM depth drives retention', type: 'insight', column: 2 },
+      { id: 'ins-compliance-gap', name: 'Compliance gaps stall deals', type: 'insight', column: 2 },
+      { id: 'ins-escalation-cx', name: 'Escalation quality is CX risk', type: 'insight', column: 2 },
+      { id: 'ins-activation', name: 'Activation gap hurts retention', type: 'insight', column: 2 },
+
+      { id: 'report', name: 'VoC Report', type: 'report', column: 3 }
+    ];
+
+    const links = [
+      // Customer sources → Feature requests
+      { source: 'intercom', target: 'sig-feature-request', value: 8 },
+      { source: 'gong', target: 'sig-feature-request', value: 6 },
+      { source: 'zendesk', target: 'sig-feature-request', value: 7 },
+      { source: 'slack', target: 'sig-feature-request', value: 4 },
+
+      // Customer sources → Pain points
+      { source: 'intercom', target: 'sig-pain-point', value: 6 },
+      { source: 'gong', target: 'sig-pain-point', value: 4 },
+      { source: 'zendesk', target: 'sig-pain-point', value: 5 },
+      { source: 'slack', target: 'sig-pain-point', value: 4 },
+      { source: 'posthog', target: 'sig-pain-point', value: 6 },
+
+      // Strategic source → Objectives & Strategic bets
+      { source: 'confluence', target: 'sig-objective', value: 6 },
+      { source: 'confluence', target: 'sig-strategic-bet', value: 5 },
+
+      // Feature requests → Insights
+      { source: 'sig-feature-request', target: 'ins-multilingual', value: 7 },
+      { source: 'sig-feature-request', target: 'ins-crm-retention', value: 8 },
+      { source: 'sig-feature-request', target: 'ins-compliance-gap', value: 6 },
+
+      // Pain points → Insights
+      { source: 'sig-pain-point', target: 'ins-escalation-cx', value: 7 },
+      { source: 'sig-pain-point', target: 'ins-activation', value: 6 },
+      { source: 'sig-pain-point', target: 'ins-crm-retention', value: 4 },
+
+      // Objectives → Insights
+      { source: 'sig-objective', target: 'ins-compliance-gap', value: 5 },
+      { source: 'sig-objective', target: 'ins-multilingual', value: 4 },
+      { source: 'sig-objective', target: 'ins-activation', value: 3 },
+
+      // Strategic bets → Insights
+      { source: 'sig-strategic-bet', target: 'ins-crm-retention', value: 5 },
+      { source: 'sig-strategic-bet', target: 'ins-compliance-gap', value: 5 },
+
+      // Insights → Report
+      { source: 'ins-multilingual', target: 'report', value: 7 },
+      { source: 'ins-crm-retention', target: 'report', value: 8 },
+      { source: 'ins-compliance-gap', target: 'report', value: 9 },
+      { source: 'ins-escalation-cx', target: 'report', value: 6 },
+      { source: 'ins-activation', target: 'report', value: 5 }
+    ];
+
+    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+    // Setup SVG
+    const sankeyArea = document.getElementById('sankey-area');
+    const svg = d3.select('#graph');
+    const quoteDisplay = document.getElementById('quote-display');
+
+    let width = sankeyArea.clientWidth;
+    let height = sankeyArea.clientHeight;
+
+    const graphWidth = width * 0.9;
+    const graphHeight = height * 0.7;
+    const offsetX = (width - graphWidth) / 2;
+    const offsetY = (height - graphHeight) / 2;
+
+    const margin = { top: 35, right: 20, bottom: 20, left: 20 };
+    const innerWidth = graphWidth - margin.left - margin.right;
+    const innerHeight = graphHeight - margin.top - margin.bottom;
+
+    const g = svg.append('g')
+      .attr('transform', `translate(${offsetX + margin.left},${offsetY + margin.top})`);
+
+    // Column labels
+    const columnLabels = ['Sources', 'Signals', 'Insights', 'Report'];
+    const columnX = [0, innerWidth * 0.33, innerWidth * 0.66, innerWidth];
+
+    g.selectAll('.column-label')
+      .data(columnLabels)
+      .join('text')
+      .attr('class', 'column-label')
+      .attr('x', (d, i) => columnX[i])
+      .attr('y', -15)
+      .attr('text-anchor', (d, i) => i === 0 ? 'start' : i === 3 ? 'end' : 'middle')
+      .text(d => d);
+
+    // Sankey layout
+    const sankey = d3.sankey()
+      .nodeId(d => d.id)
+      .nodeWidth(14)
+      .nodePadding(14)
+      .nodeAlign(d3.sankeyLeft)
+      .extent([[0, 0], [innerWidth, innerHeight]]);
+
+    const sankeyData = sankey({
+      nodes: nodes.map(d => ({...d})),
+      links: links.map(d => ({...d}))
+    });
+
+    function sankeyLinkPath(d) {
+      const sx = d.source.x1, sy = d.y0, tx = d.target.x0, ty = d.y1;
+      const xi = d3.interpolateNumber(sx, tx);
+      return `M${sx},${sy} C${xi(0.5)},${sy} ${xi(0.5)},${ty} ${tx},${ty}`;
+    }
+
+    // Draw links
+    const linkPaths = g.append('g').selectAll('.sankey-link')
+      .data(sankeyData.links)
+      .join('path')
+      .attr('class', 'sankey-link')
+      .attr('d', sankeyLinkPath)
+      .attr('stroke', d => getNodeColor(nodeMap.get(d.source.id)))
+      .attr('stroke-width', d => Math.max(2, d.width));
+
+    // Draw nodes
+    const nodeGroups = g.append('g').selectAll('.sankey-node')
+      .data(sankeyData.nodes)
+      .join('g')
+      .attr('class', d => `sankey-node node-${d.type}`)
+      .attr('transform', d => `translate(${d.x0},${d.y0})`)
+      .on('click', (event, d) => {
+        event.stopPropagation();
+        handleNodeClick(d);
+      });
+
+    nodeGroups.append('rect')
+      .attr('width', d => d.x1 - d.x0)
+      .attr('height', d => d.y1 - d.y0)
+      .attr('stroke', d => getNodeColor(d))
+      .attr('rx', 3);
+
+    nodeGroups.append('text')
+      .attr('x', d => d.column === 0 ? (d.x1 - d.x0) + 6 : d.column === 3 ? -6 : (d.x1 - d.x0) / 2)
+      .attr('y', d => (d.column === 0 || d.column === 3) ? (d.y1 - d.y0) / 2 : -5)
+      .attr('dy', d => (d.column === 0 || d.column === 3) ? '0.35em' : 0)
+      .attr('text-anchor', d => d.column === 0 ? 'start' : d.column === 3 ? 'end' : 'middle')
+      .text(d => d.name);
+
+    nodeGroups.filter(d => d.metric)
+      .append('text')
+      .attr('class', 'node-sublabel')
+      .attr('x', d => (d.x1 - d.x0) / 2)
+      .attr('y', d => (d.y1 - d.y0) + 10)
+      .attr('text-anchor', 'middle')
+      .text(d => d.metric);
+
+    function getNodeColor(d) {
+      switch(d.type) {
+        case 'source': return colors.source;
+        case 'signal': return colors.signal;
+        case 'theme': return colors.theme;
+        case 'report': return colors.report;
+        default: return colors.textMuted;
+      }
+    }
+
+    // Handle node click - show quotes
+    function handleNodeClick(d) {
+      highlightLineage(d.id);
+
+      // Show quotes for source nodes
+      if (d.type === 'source' && sourceQuotes[d.id]) {
+        showQuotes(d.id, d.name, d.type);
+      } else {
+        // For non-source nodes, collect quotes from connected sources
+        const connectedSources = getConnectedSources(d.id);
+        if (connectedSources.length > 0) {
+          showQuotesForSources(connectedSources, d.name, d.type);
+        }
+      }
+    }
+
+    function getConnectedSources(nodeId) {
+      const sources = new Set();
+      function traceUp(id) {
+        sankeyData.links.forEach(link => {
+          if (link.target.id === id) {
+            if (nodeMap.get(link.source.id).type === 'source') {
+              sources.add(link.source.id);
+            } else {
+              traceUp(link.source.id);
+            }
+          }
+        });
+      }
+      traceUp(nodeId);
+      return Array.from(sources);
+    }
+
+    function showQuotes(sourceId, name, type) {
+      const quotes = sourceQuotes[sourceId] || [];
+      document.getElementById('quote-dot').style.background = colors.source;
+      document.getElementById('quote-name').textContent = name;
+      document.getElementById('quote-type').textContent = type.toUpperCase();
+      document.getElementById('quote-type').style.color = getNodeColor({ type });
+
+      const grid = document.getElementById('quote-grid');
+      grid.innerHTML = quotes.map(q => `
+        <div class="quote-card">
+          <div class="quote-card-text">"${q.text}"</div>
+          <div class="quote-card-source">— <span>${q.source}</span></div>
+        </div>
+      `).join('');
+
+      quoteDisplay.classList.add('visible');
+    }
+
+    function showQuotesForSources(sourceIds, name, type) {
+      const allQuotes = [];
+      sourceIds.forEach(id => {
+        const quotes = sourceQuotes[id] || [];
+        quotes.forEach(q => allQuotes.push({ ...q, sourceId: id, sourceName: nodeMap.get(id).name }));
+      });
+
+      document.getElementById('quote-dot').style.background = getNodeColor({ type });
+      document.getElementById('quote-name').textContent = name;
+      document.getElementById('quote-type').textContent = type.toUpperCase();
+      document.getElementById('quote-type').style.color = getNodeColor({ type });
+
+      const grid = document.getElementById('quote-grid');
+      grid.innerHTML = allQuotes.slice(0, 6).map(q => `
+        <div class="quote-card" style="border-left-color: ${colors.source};">
+          <div class="quote-card-text">"${q.text}"</div>
+          <div class="quote-card-source">— <span>${q.source}</span> via ${q.sourceName}</div>
+        </div>
+      `).join('');
+
+      quoteDisplay.classList.add('visible');
+    }
+
+    function highlightLineage(nodeId) {
+      const connectedNodeIds = new Set([nodeId]);
+      const connectedLinkIndices = new Set();
+
+      function traceUp(id) {
+        sankeyData.links.forEach((link, i) => {
+          if (link.target.id === id) {
+            connectedNodeIds.add(link.source.id);
+            connectedLinkIndices.add(i);
+            traceUp(link.source.id);
+          }
+        });
+      }
+
+      function traceDown(id) {
+        sankeyData.links.forEach((link, i) => {
+          if (link.source.id === id) {
+            connectedNodeIds.add(link.target.id);
+            connectedLinkIndices.add(i);
+            traceDown(link.target.id);
+          }
+        });
+      }
+
+      traceUp(nodeId);
+      traceDown(nodeId);
+
+      nodeGroups.classed('selected', n => n.id === nodeId).classed('dimmed', n => !connectedNodeIds.has(n.id));
+      linkPaths.classed('highlighted', (l, i) => connectedLinkIndices.has(i)).classed('dimmed', (l, i) => !connectedLinkIndices.has(i));
+
+      // Highlight report elements
+      document.querySelectorAll('.insight-item, .rec-item, .inline-quote').forEach(el => {
+        const elSources = (el.dataset.sources || '').split(',');
+        const isConnected = elSources.some(s => connectedNodeIds.has(s)) || connectedNodeIds.has(el.dataset.insight) || connectedNodeIds.has(el.dataset.rec) || connectedNodeIds.has(el.dataset.source);
+        el.classList.toggle('highlighted', isConnected);
+      });
+    }
+
+    function clearHighlights() {
+      nodeGroups.classed('selected', false).classed('dimmed', false);
+      linkPaths.classed('highlighted', false).classed('dimmed', false);
+      document.querySelectorAll('.highlighted').forEach(el => el.classList.remove('highlighted'));
+      quoteDisplay.classList.remove('visible');
+    }
+
+    // Event listeners
+    svg.on('click', clearHighlights);
+    document.getElementById('quote-close').addEventListener('click', () => quoteDisplay.classList.remove('visible'));
+
+    // Report panel interactions
+    document.querySelectorAll('.insight-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const sources = (el.dataset.sources || '').split(',').filter(Boolean);
+        if (sources.length > 0) {
+          highlightLineage(sources[0]);
+          showQuotesForSources(sources, el.querySelector('.insight-title').textContent, 'insight');
+        }
+      });
+    });
+
+    document.querySelectorAll('.rec-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const sources = (el.dataset.sources || '').split(',').filter(Boolean);
+        if (sources.length > 0) {
+          highlightLineage(sources[0]);
+          showQuotesForSources(sources, el.querySelector('.rec-title').textContent, 'recommendation');
+        }
+      });
+    });
+
+    document.querySelectorAll('.inline-quote').forEach(el => {
+      el.addEventListener('click', () => {
+        const source = el.dataset.source;
+        if (source) {
+          highlightLineage(source);
+          showQuotes(source, nodeMap.get(source)?.name || source, 'source');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
