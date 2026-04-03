@@ -611,42 +611,11 @@
     const container = document.getElementById('graph-container');
     const sidePanel = document.getElementById('side-panel');
     const clickHint = document.getElementById('click-hint');
-    let width = container.clientWidth;
-    let height = container.clientHeight;
+    const tooltip = document.getElementById('tooltip');
 
-    const defs = svg.append('defs');
-
-    const glow = defs.append('filter')
-      .attr('id', 'glow')
-      .attr('x', '-50%')
-      .attr('y', '-50%')
-      .attr('width', '200%')
-      .attr('height', '200%');
-
-    glow.append('feGaussianBlur')
-      .attr('stdDeviation', '3')
-      .attr('result', 'coloredBlur');
-
-    const glowMerge = glow.append('feMerge');
-    glowMerge.append('feMergeNode').attr('in', 'coloredBlur');
-    glowMerge.append('feMergeNode').attr('in', 'SourceGraphic');
-
-    const linkGroup = svg.append('g').attr('class', 'links');
-    const nodeGroup = svg.append('g').attr('class', 'nodes');
-
-    const simulation = d3.forceSimulation(data.nodes)
-      .force('link', d3.forceLink(data.links)
-        .id(d => d.id)
-        .distance(80)
-        .strength(d => d.strength * 0.5))
-      .force('charge', d3.forceManyBody()
-        .strength(-300)
-        .distanceMax(350))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide()
-        .radius(d => getNodeRadius(d) + 15))
-      .force('x', d3.forceX(width / 2).strength(0.06))
-      .force('y', d3.forceY(height / 2).strength(0.06));
+    // Outer-scope variables referenced by event handlers and other functions
+    let simulation, node, link, linkGlow;
+    let width, height;
 
     function getNodeRadius(d) {
       const baseRadius = d.type === 'source' ? 18 :
@@ -665,91 +634,174 @@
       }
     }
 
-    const linkGlow = linkGroup.selectAll('.link-glow')
-      .data(data.links)
-      .join('line')
-      .attr('class', 'link-glow')
-      .attr('stroke', d => {
-        const sourceNode = data.nodes.find(n => n.id === (d.source.id || d.source));
-        return getNodeColor(sourceNode);
+    function dragstarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragended(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+
+    function drawGraph() {
+      // Stop old simulation before clearing
+      if (simulation) {
+        simulation.stop();
+      }
+
+      // Clear previous drawing
+      svg.selectAll('*').remove();
+
+      // Recalculate dimensions
+      width = container.clientWidth;
+      height = container.clientHeight;
+
+      // Defs & glow filter
+      const defs = svg.append('defs');
+
+      const glow = defs.append('filter')
+        .attr('id', 'glow')
+        .attr('x', '-50%')
+        .attr('y', '-50%')
+        .attr('width', '200%')
+        .attr('height', '200%');
+
+      glow.append('feGaussianBlur')
+        .attr('stdDeviation', '3')
+        .attr('result', 'coloredBlur');
+
+      const glowMerge = glow.append('feMerge');
+      glowMerge.append('feMergeNode').attr('in', 'coloredBlur');
+      glowMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+      const linkGroup = svg.append('g').attr('class', 'links');
+      const nodeGroup = svg.append('g').attr('class', 'nodes');
+
+      // Reset fixed positions so simulation can re-layout
+      data.nodes.forEach(d => { d.fx = null; d.fy = null; });
+
+      simulation = d3.forceSimulation(data.nodes)
+        .force('link', d3.forceLink(data.links)
+          .id(d => d.id)
+          .distance(80)
+          .strength(d => d.strength * 0.5))
+        .force('charge', d3.forceManyBody()
+          .strength(-300)
+          .distanceMax(350))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide()
+          .radius(d => getNodeRadius(d) + 15))
+        .force('x', d3.forceX(width / 2).strength(0.06))
+        .force('y', d3.forceY(height / 2).strength(0.06));
+
+      linkGlow = linkGroup.selectAll('.link-glow')
+        .data(data.links)
+        .join('line')
+        .attr('class', 'link-glow')
+        .attr('stroke', d => {
+          const sourceNode = data.nodes.find(n => n.id === (d.source.id || d.source));
+          return getNodeColor(sourceNode);
+        })
+        .attr('stroke-width', 6);
+
+      link = linkGroup.selectAll('.link')
+        .data(data.links)
+        .join('line')
+        .attr('class', 'link')
+        .attr('stroke', d => {
+          const sourceNode = data.nodes.find(n => n.id === (d.source.id || d.source));
+          return getNodeColor(sourceNode);
+        })
+        .attr('stroke-width', d => 1 + d.strength * 1.5);
+
+      node = nodeGroup.selectAll('.node')
+        .data(data.nodes)
+        .join('g')
+        .attr('class', 'node')
+        .call(d3.drag()
+          .on('start', dragstarted)
+          .on('drag', dragged)
+          .on('end', dragended));
+
+      node.append('circle')
+        .attr('class', 'node-ring')
+        .attr('r', d => getNodeRadius(d) + 2)
+        .attr('stroke', d => getNodeColor(d))
+        .attr('filter', 'url(#glow)');
+
+      node.append('circle')
+        .attr('class', 'node-inner')
+        .attr('r', d => getNodeRadius(d))
+        .attr('fill', colors.velvetMid);
+
+      node.append('text')
+        .attr('class', 'node-label')
+        .attr('dy', d => getNodeRadius(d) + 14)
+        .text(d => d.label.length > 16 ? d.label.substring(0, 14) + '...' : d.label);
+
+      // Hover for tooltip (brief info)
+      node.on('mouseenter', function(event, d) {
+        if (selectedNode === d) return;
+
+        const connections = data.links.filter(l =>
+          (l.source.id || l.source) === d.id || (l.target.id || l.target) === d.id
+        ).length;
+
+        tooltip.querySelector('.tooltip-title').textContent = d.label;
+        tooltip.querySelector('.tooltip-type').textContent = d.type.toUpperCase();
+        tooltip.querySelector('.tooltip-type').style.color = getNodeColor(d);
+
+        let metaText = `${connections} connections · Confidence: ${Math.round(d.weight * 100)}%`;
+        if (d.count) metaText = `${d.count} · ${metaText}`;
+        tooltip.querySelector('.tooltip-meta').textContent = metaText;
+
+        tooltip.style.left = (event.pageX + 15) + 'px';
+        tooltip.style.top = (event.pageY - 10) + 'px';
+        tooltip.classList.add('visible');
       })
-      .attr('stroke-width', 6);
-
-    const link = linkGroup.selectAll('.link')
-      .data(data.links)
-      .join('line')
-      .attr('class', 'link')
-      .attr('stroke', d => {
-        const sourceNode = data.nodes.find(n => n.id === (d.source.id || d.source));
-        return getNodeColor(sourceNode);
+      .on('mousemove', function(event) {
+        tooltip.style.left = (event.pageX + 15) + 'px';
+        tooltip.style.top = (event.pageY - 10) + 'px';
       })
-      .attr('stroke-width', d => 1 + d.strength * 1.5);
+      .on('mouseleave', function() {
+        tooltip.classList.remove('visible');
+      });
 
-    const node = nodeGroup.selectAll('.node')
-      .data(data.nodes)
-      .join('g')
-      .attr('class', 'node')
-      .call(d3.drag()
-        .on('start', dragstarted)
-        .on('drag', dragged)
-        .on('end', dragended));
+      // Click to open side panel
+      node.on('click', function(event, d) {
+        event.stopPropagation();
+        selectNode(d);
+      });
 
-    node.append('circle')
-      .attr('class', 'node-ring')
-      .attr('r', d => getNodeRadius(d) + 2)
-      .attr('stroke', d => getNodeColor(d))
-      .attr('filter', 'url(#glow)');
+      // Click on background to close panel
+      svg.on('click', function() {
+        closePanel();
+      });
 
-    node.append('circle')
-      .attr('class', 'node-inner')
-      .attr('r', d => getNodeRadius(d))
-      .attr('fill', colors.velvetMid);
+      simulation.on('tick', () => {
+        linkGlow
+          .attr('x1', d => d.source.x)
+          .attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x)
+          .attr('y2', d => d.target.y);
 
-    node.append('text')
-      .attr('class', 'node-label')
-      .attr('dy', d => getNodeRadius(d) + 14)
-      .text(d => d.label.length > 16 ? d.label.substring(0, 14) + '...' : d.label);
+        link
+          .attr('x1', d => d.source.x)
+          .attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x)
+          .attr('y2', d => d.target.y);
 
-    const tooltip = document.getElementById('tooltip');
-
-    // Hover for tooltip (brief info)
-    node.on('mouseenter', function(event, d) {
-      if (selectedNode === d) return; // Don't show tooltip for selected node
-
-      const connections = data.links.filter(l =>
-        (l.source.id || l.source) === d.id || (l.target.id || l.target) === d.id
-      ).length;
-
-      tooltip.querySelector('.tooltip-title').textContent = d.label;
-      tooltip.querySelector('.tooltip-type').textContent = d.type.toUpperCase();
-      tooltip.querySelector('.tooltip-type').style.color = getNodeColor(d);
-
-      let metaText = `${connections} connections · Confidence: ${Math.round(d.weight * 100)}%`;
-      if (d.count) metaText = `${d.count} · ${metaText}`;
-      tooltip.querySelector('.tooltip-meta').textContent = metaText;
-
-      tooltip.style.left = (event.pageX + 15) + 'px';
-      tooltip.style.top = (event.pageY - 10) + 'px';
-      tooltip.classList.add('visible');
-    })
-    .on('mousemove', function(event) {
-      tooltip.style.left = (event.pageX + 15) + 'px';
-      tooltip.style.top = (event.pageY - 10) + 'px';
-    })
-    .on('mouseleave', function() {
-      tooltip.classList.remove('visible');
-    });
-
-    // Click to open side panel
-    node.on('click', function(event, d) {
-      event.stopPropagation();
-      selectNode(d);
-    });
-
-    // Click on background to close panel
-    svg.on('click', function() {
-      closePanel();
-    });
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+      });
+    }
 
     function selectNode(d) {
       // Update selected state
@@ -911,46 +963,11 @@
       simulation.alpha(0.3).restart();
     }
 
-    simulation.on('tick', () => {
-      linkGlow
-        .attr('x1', d => d.source.x)
-        .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
-        .attr('y2', d => d.target.y);
+    // Initial draw
+    drawGraph();
 
-      link
-        .attr('x1', d => d.source.x)
-        .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
-        .attr('y2', d => d.target.y);
-
-      node.attr('transform', d => `translate(${d.x},${d.y})`);
-    });
-
-    function dragstarted(event, d) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      d.fx = d.x;
-      d.fy = d.y;
-    }
-
-    function dragged(event, d) {
-      d.fx = event.x;
-      d.fy = event.y;
-    }
-
-    function dragended(event, d) {
-      if (!event.active) simulation.alphaTarget(0);
-      d.fx = null;
-      d.fy = null;
-    }
-
-    window.addEventListener('resize', () => {
-      width = container.clientWidth;
-      height = container.clientHeight;
-      updateSimulationCenter();
-      simulation.force('y', d3.forceY(height / 2).strength(0.06));
-      simulation.alpha(0.3).restart();
-    });
+    // Redraw on resize
+    new ResizeObserver(() => drawGraph()).observe(container);
   </script>
 </body>
 </html>
