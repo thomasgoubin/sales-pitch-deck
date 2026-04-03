@@ -593,6 +593,10 @@
           <span>Insights</span>
         </div>
         <div class="mini-legend-item">
+          <div class="mini-legend-dot" style="background: #38BDF8;"></div>
+          <span>Decisions</span>
+        </div>
+        <div class="mini-legend-item">
           <div class="mini-legend-dot" style="background: var(--teal);"></div>
           <span>Report</span>
         </div>
@@ -626,6 +630,10 @@
         <div class="report-metric-box">
           <div class="report-metric-value">13</div>
           <div class="report-metric-label">Pain Points</div>
+        </div>
+        <div class="report-metric-box">
+          <div class="report-metric-value">4</div>
+          <div class="report-metric-label">Decisions</div>
         </div>
         <div class="report-metric-box">
           <div class="report-metric-value">9</div>
@@ -724,6 +732,46 @@
         <div class="inline-quote" data-source="confluence" data-quotes="strategy-1">
           "Q2 OKR: Expand into healthcare vertical with HIPAA-compliant offering. Enterprise readiness is the key unlock for $100K+ deals."
           <span class="inline-quote-source">— Strategy — Board Deck via Confluence</span>
+        </div>
+      </div>
+
+      <!-- Key Decisions -->
+      <div class="report-section">
+        <div class="report-section-header">
+          <div class="report-section-title">Key Decisions</div>
+          <div class="report-section-badge" style="color: #38BDF8;">4 decided</div>
+        </div>
+
+        <div class="rec-item" data-decision="dec-healthcare" data-sources="intercom,gong,zendesk,confluence" style="border-left: 3px solid #38BDF8;">
+          <div class="rec-priority p0" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8;">P0</div>
+          <div class="rec-content">
+            <div class="rec-title">Fast-track healthcare readiness</div>
+            <div class="rec-desc">Combines HIPAA compliance + Spanish language support. Unblocks $2.4M pipeline and healthcare vertical OKR.</div>
+          </div>
+        </div>
+
+        <div class="rec-item" data-decision="dec-crm" data-sources="intercom,zendesk,slack,confluence" style="border-left: 3px solid #38BDF8;">
+          <div class="rec-priority p1" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8;">P1</div>
+          <div class="rec-content">
+            <div class="rec-title">Build native Salesforce sync</div>
+            <div class="rec-desc">18 requests, 10 churn-risk accounts citing manual CRM logging. Enterprise readiness strategic bet.</div>
+          </div>
+        </div>
+
+        <div class="rec-item" data-decision="dec-escalation" data-sources="intercom,posthog,slack" style="border-left: 3px solid #38BDF8;">
+          <div class="rec-priority p0" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8;">P0</div>
+          <div class="rec-content">
+            <div class="rec-title">Ship warm transfer with context</div>
+            <div class="rec-desc">Cold transfers are #1 CSAT complaint. Context handoff eliminates repeat explanations on escalation.</div>
+          </div>
+        </div>
+
+        <div class="rec-item" data-decision="dec-onboarding" data-sources="posthog" style="border-left: 3px solid #38BDF8;">
+          <div class="rec-priority p2" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8;">P2</div>
+          <div class="rec-content">
+            <div class="rec-title">Redesign onboarding step 3</div>
+            <div class="rec-desc">34% drop-off at step 3. Users who complete have 3x retention. Quick win for time-to-value.</div>
+          </div>
         </div>
       </div>
 
@@ -838,6 +886,7 @@
       source: '#FF6B35',
       signal: '#8B5CF6',
       insight: '#EC4899',
+      decision: '#38BDF8',
       report: '#00BFA5',
       velvet: '#0A0A0F',
       velvetMid: '#111118',
@@ -905,13 +954,19 @@
       { id: 'sig-strategic-bet', name: 'Strategic bet', type: 'signal', column: 1, metric: '2 active' },
 
       // Insights
-      { id: 'ins-multilingual', name: 'Multilingual is expansion blocker', type: 'insight', column: 2 },
-      { id: 'ins-crm-retention', name: 'CRM depth drives retention', type: 'insight', column: 2 },
-      { id: 'ins-compliance-gap', name: 'Compliance gaps stall deals', type: 'insight', column: 2 },
-      { id: 'ins-escalation-cx', name: 'Escalation quality is CX risk', type: 'insight', column: 2 },
-      { id: 'ins-activation', name: 'Activation gap hurts retention', type: 'insight', column: 2 },
+      { id: 'ins-multilingual', name: 'Multilingual blocker', type: 'insight', column: 2 },
+      { id: 'ins-crm-retention', name: 'CRM retention risk', type: 'insight', column: 2 },
+      { id: 'ins-compliance-gap', name: 'Compliance gaps', type: 'insight', column: 2 },
+      { id: 'ins-escalation-cx', name: 'Escalation CX risk', type: 'insight', column: 2 },
+      { id: 'ins-activation', name: 'Activation gap', type: 'insight', column: 2 },
 
-      { id: 'report', name: 'VoC Report', type: 'report', column: 3 }
+      // Decisions
+      { id: 'dec-healthcare', name: 'Healthcare readiness', type: 'decision', column: 3 },
+      { id: 'dec-crm', name: 'Salesforce sync', type: 'decision', column: 3 },
+      { id: 'dec-escalation', name: 'Warm transfer', type: 'decision', column: 3 },
+      { id: 'dec-onboarding', name: 'Onboarding redesign', type: 'decision', column: 3 },
+
+      { id: 'report', name: 'VoC Report', type: 'report', column: 4 }
     ];
 
     const links = [
@@ -951,12 +1006,18 @@
       { source: 'sig-strategic-bet', target: 'ins-crm-retention', value: 5 },
       { source: 'sig-strategic-bet', target: 'ins-compliance-gap', value: 5 },
 
-      // Insights → Report
-      { source: 'ins-multilingual', target: 'report', value: 7 },
-      { source: 'ins-crm-retention', target: 'report', value: 8 },
-      { source: 'ins-compliance-gap', target: 'report', value: 9 },
-      { source: 'ins-escalation-cx', target: 'report', value: 6 },
-      { source: 'ins-activation', target: 'report', value: 5 }
+      // Insights → Decisions
+      { source: 'ins-multilingual', target: 'dec-healthcare', value: 7 },
+      { source: 'ins-compliance-gap', target: 'dec-healthcare', value: 9 },
+      { source: 'ins-crm-retention', target: 'dec-crm', value: 8 },
+      { source: 'ins-escalation-cx', target: 'dec-escalation', value: 6 },
+      { source: 'ins-activation', target: 'dec-onboarding', value: 5 },
+
+      // Decisions → Report
+      { source: 'dec-healthcare', target: 'report', value: 10 },
+      { source: 'dec-crm', target: 'report', value: 7 },
+      { source: 'dec-escalation', target: 'report', value: 5 },
+      { source: 'dec-onboarding', target: 'report', value: 4 }
     ];
 
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
@@ -966,99 +1027,121 @@
     const svg = d3.select('#graph');
     const quoteDisplay = document.getElementById('quote-display');
 
-    let width = sankeyArea.clientWidth;
-    let height = sankeyArea.clientHeight;
+    let sankeyData, nodeGroups, linkPaths;
 
-    const graphWidth = width * 0.9;
-    const graphHeight = height * 0.7;
-    const offsetX = (width - graphWidth) / 2;
-    const offsetY = (height - graphHeight) / 2;
+    function drawSankey() {
+      // Clear previous drawing
+      svg.selectAll('*').remove();
 
-    const margin = { top: 35, right: 20, bottom: 20, left: 20 };
-    const innerWidth = graphWidth - margin.left - margin.right;
-    const innerHeight = graphHeight - margin.top - margin.bottom;
+      const width = sankeyArea.clientWidth;
+      const height = sankeyArea.clientHeight;
 
-    const g = svg.append('g')
-      .attr('transform', `translate(${offsetX + margin.left},${offsetY + margin.top})`);
+      const graphWidth = width * 0.9;
+      const graphHeight = Math.min(height * 0.7, 600);
+      const offsetX = (width - graphWidth) / 2;
+      const offsetY = (height - graphHeight) / 2;
 
-    // Column labels
-    const columnLabels = ['Sources', 'Signals', 'Insights', 'Report'];
-    const columnX = [0, innerWidth * 0.33, innerWidth * 0.66, innerWidth];
+      const margin = { top: 35, right: 20, bottom: 20, left: 20 };
+      const innerWidth = graphWidth - margin.left - margin.right;
+      const innerHeight = graphHeight - margin.top - margin.bottom;
 
-    g.selectAll('.column-label')
-      .data(columnLabels)
-      .join('text')
-      .attr('class', 'column-label')
-      .attr('x', (d, i) => columnX[i])
-      .attr('y', -15)
-      .attr('text-anchor', (d, i) => i === 0 ? 'start' : i === 3 ? 'end' : 'middle')
-      .text(d => d);
+      const g = svg.append('g')
+        .attr('transform', `translate(${offsetX + margin.left},${offsetY + margin.top})`);
 
-    // Sankey layout
-    const sankey = d3.sankey()
-      .nodeId(d => d.id)
-      .nodeWidth(14)
-      .nodePadding(14)
-      .nodeAlign(d3.sankeyLeft)
-      .extent([[0, 0], [innerWidth, innerHeight]]);
+      // Sankey layout
+      const sankey = d3.sankey()
+        .nodeId(d => d.id)
+        .nodeWidth(12)
+        .nodePadding(12)
+        .nodeAlign(d3.sankeyLeft)
+        .extent([[0, 0], [innerWidth, innerHeight]]);
 
-    const sankeyData = sankey({
-      nodes: nodes.map(d => ({...d})),
-      links: links.map(d => ({...d}))
-    });
-
-    function sankeyLinkPath(d) {
-      const sx = d.source.x1, sy = d.y0, tx = d.target.x0, ty = d.y1;
-      const xi = d3.interpolateNumber(sx, tx);
-      return `M${sx},${sy} C${xi(0.5)},${sy} ${xi(0.5)},${ty} ${tx},${ty}`;
-    }
-
-    // Draw links
-    const linkPaths = g.append('g').selectAll('.sankey-link')
-      .data(sankeyData.links)
-      .join('path')
-      .attr('class', 'sankey-link')
-      .attr('d', sankeyLinkPath)
-      .attr('stroke', d => getNodeColor(nodeMap.get(d.source.id)))
-      .attr('stroke-width', d => Math.max(2, d.width));
-
-    // Draw nodes
-    const nodeGroups = g.append('g').selectAll('.sankey-node')
-      .data(sankeyData.nodes)
-      .join('g')
-      .attr('class', d => `sankey-node node-${d.type}`)
-      .attr('transform', d => `translate(${d.x0},${d.y0})`)
-      .on('click', (event, d) => {
-        event.stopPropagation();
-        handleNodeClick(d);
+      sankeyData = sankey({
+        nodes: nodes.map(d => ({...d})),
+        links: links.map(d => ({...d}))
       });
 
-    nodeGroups.append('rect')
-      .attr('width', d => d.x1 - d.x0)
-      .attr('height', d => d.y1 - d.y0)
-      .attr('stroke', d => getNodeColor(d))
-      .attr('rx', 3);
+      // Derive column label positions from actual sankey node positions
+      const columnLabels = ['Sources', 'Signals', 'Insights', 'Decisions', 'Report'];
+      const colPositions = [0, 1, 2, 3, 4].map(col => {
+        const colNodes = sankeyData.nodes.filter(n => n.column === col);
+        if (colNodes.length === 0) return 0;
+        return (colNodes[0].x0 + colNodes[0].x1) / 2;
+      });
 
-    nodeGroups.append('text')
-      .attr('x', d => d.column === 0 ? (d.x1 - d.x0) + 6 : d.column === 3 ? -6 : (d.x1 - d.x0) / 2)
-      .attr('y', d => (d.column === 0 || d.column === 3) ? (d.y1 - d.y0) / 2 : -5)
-      .attr('dy', d => (d.column === 0 || d.column === 3) ? '0.35em' : 0)
-      .attr('text-anchor', d => d.column === 0 ? 'start' : d.column === 3 ? 'end' : 'middle')
-      .text(d => d.name);
+      g.selectAll('.column-label')
+        .data(columnLabels)
+        .join('text')
+        .attr('class', 'column-label')
+        .attr('x', (d, i) => colPositions[i])
+        .attr('y', -15)
+        .attr('text-anchor', 'middle')
+        .text(d => d);
 
-    nodeGroups.filter(d => d.metric)
-      .append('text')
-      .attr('class', 'node-sublabel')
-      .attr('x', d => (d.x1 - d.x0) / 2)
-      .attr('y', d => (d.y1 - d.y0) + 10)
-      .attr('text-anchor', 'middle')
-      .text(d => d.metric);
+      function sankeyLinkPath(d) {
+        const sx = d.source.x1, sy = d.y0, tx = d.target.x0, ty = d.y1;
+        const xi = d3.interpolateNumber(sx, tx);
+        return `M${sx},${sy} C${xi(0.5)},${sy} ${xi(0.5)},${ty} ${tx},${ty}`;
+      }
+
+      // Draw links
+      linkPaths = g.append('g').selectAll('.sankey-link')
+        .data(sankeyData.links)
+        .join('path')
+        .attr('class', 'sankey-link')
+        .attr('d', sankeyLinkPath)
+        .attr('stroke', d => getNodeColor(nodeMap.get(d.source.id)))
+        .attr('stroke-width', d => Math.max(2, d.width));
+
+      // Draw nodes
+      nodeGroups = g.append('g').selectAll('.sankey-node')
+        .data(sankeyData.nodes)
+        .join('g')
+        .attr('class', d => `sankey-node node-${d.type}`)
+        .attr('transform', d => `translate(${d.x0},${d.y0})`)
+        .on('click', (event, d) => {
+          event.stopPropagation();
+          handleNodeClick(d);
+        });
+
+      nodeGroups.append('rect')
+        .attr('width', d => d.x1 - d.x0)
+        .attr('height', d => d.y1 - d.y0)
+        .attr('stroke', d => getNodeColor(d))
+        .attr('rx', 3);
+
+      nodeGroups.append('text')
+        .attr('x', d => d.column === 0 ? (d.x1 - d.x0) + 6 : d.column === 4 ? -6 : (d.x1 - d.x0) / 2)
+        .attr('y', d => (d.column === 0 || d.column === 4) ? (d.y1 - d.y0) / 2 : -4)
+        .attr('dy', d => (d.column === 0 || d.column === 4) ? '0.35em' : 0)
+        .attr('text-anchor', d => d.column === 0 ? 'start' : d.column === 4 ? 'end' : 'middle')
+        .style('font-size', d => (d.column >= 2) ? '9px' : '10px')
+        .text(d => d.name);
+
+      nodeGroups.filter(d => d.metric)
+        .append('text')
+        .attr('class', 'node-sublabel')
+        .attr('x', d => (d.x1 - d.x0) / 2)
+        .attr('y', d => (d.y1 - d.y0) + 10)
+        .attr('text-anchor', 'middle')
+        .text(d => d.metric);
+
+      // Re-attach svg click handler
+      svg.on('click', clearHighlights);
+    }
+
+    // Initial draw
+    drawSankey();
+
+    // Redraw on resize
+    new ResizeObserver(() => drawSankey()).observe(sankeyArea);
 
     function getNodeColor(d) {
       switch(d.type) {
         case 'source': return colors.source;
         case 'signal': return colors.signal;
-        case 'theme': return colors.theme;
+        case 'insight': return colors.insight;
+        case 'decision': return colors.decision;
         case 'report': return colors.report;
         default: return colors.textMuted;
       }
@@ -1171,7 +1254,7 @@
       // Highlight report elements
       document.querySelectorAll('.insight-item, .rec-item, .inline-quote').forEach(el => {
         const elSources = (el.dataset.sources || '').split(',');
-        const isConnected = elSources.some(s => connectedNodeIds.has(s)) || connectedNodeIds.has(el.dataset.insight) || connectedNodeIds.has(el.dataset.rec) || connectedNodeIds.has(el.dataset.source);
+        const isConnected = elSources.some(s => connectedNodeIds.has(s)) || connectedNodeIds.has(el.dataset.insight) || connectedNodeIds.has(el.dataset.rec) || connectedNodeIds.has(el.dataset.decision) || connectedNodeIds.has(el.dataset.source);
         el.classList.toggle('highlighted', isConnected);
       });
     }
@@ -1184,7 +1267,6 @@
     }
 
     // Event listeners
-    svg.on('click', clearHighlights);
     document.getElementById('quote-close').addEventListener('click', () => quoteDisplay.classList.remove('visible'));
 
     // Report panel interactions
@@ -1198,12 +1280,25 @@
       });
     });
 
-    document.querySelectorAll('.rec-item').forEach(el => {
+    document.querySelectorAll('.rec-item:not([data-decision])').forEach(el => {
       el.addEventListener('click', () => {
         const sources = (el.dataset.sources || '').split(',').filter(Boolean);
         if (sources.length > 0) {
           highlightLineage(sources[0]);
           showQuotesForSources(sources, el.querySelector('.rec-title').textContent, 'recommendation');
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-decision]').forEach(el => {
+      el.addEventListener('click', () => {
+        const decisionId = el.dataset.decision;
+        if (decisionId) {
+          highlightLineage(decisionId);
+          const sources = (el.dataset.sources || '').split(',').filter(Boolean);
+          if (sources.length > 0) {
+            showQuotesForSources(sources, el.querySelector('.rec-title').textContent, 'decision');
+          }
         }
       });
     });

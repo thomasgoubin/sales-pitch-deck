@@ -353,7 +353,7 @@
     };
 
     const margin = { top: 10, right: 150, bottom: 25, left: 80 };
-    const width = 1100 - margin.left - margin.right;
+    let width = 1100 - margin.left - margin.right;
 
     // Chart heights
     const signalsHeight = 75;
@@ -519,7 +519,7 @@
     // ========================================
     // Shared X Scale
     // ========================================
-    const xScale = d3.scaleTime()
+    let xScale = d3.scaleTime()
       .domain([startDate, endDate])
       .range([0, width]);
 
@@ -1408,10 +1408,35 @@
     // ========================================
     // Initialize
     // ========================================
-    renderSignalsChart();
-    renderQuantitativeChart();
-    renderTracesChart();
-    renderQualitativeChart();
+    const containerEl = document.querySelector('.chart-container');
+
+    function drawTimeline() {
+      // Recalculate width from container (subtract padding/border)
+      const containerWidth = containerEl.getBoundingClientRect().width
+        - parseFloat(getComputedStyle(containerEl).paddingLeft)
+        - parseFloat(getComputedStyle(containerEl).paddingRight);
+      width = containerWidth - margin.left - margin.right;
+      xScale = d3.scaleTime()
+        .domain([startDate, endDate])
+        .range([0, width]);
+
+      // Clear all SVGs
+      d3.select('#signals-chart').selectAll('*').remove();
+      d3.select('#quantitative-chart').selectAll('*').remove();
+      d3.select('#traces-chart').selectAll('*').remove();
+      d3.select('#qualitative-chart').selectAll('*').remove();
+
+      // Redraw all charts
+      renderSignalsChart();
+      renderQuantitativeChart();
+      renderTracesChart();
+      renderQualitativeChart();
+    }
+
+    drawTimeline();
+
+    // Redraw on resize
+    new ResizeObserver(() => drawTimeline()).observe(containerEl);
   </script>
 </body>
 </html>
