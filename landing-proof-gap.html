@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Naptha — Why did we build that? If the answer takes a week, you have a problem.</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&f[]=general-sans@400,500,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --velvet: #0A0A0F;
+  --velvet-mid: #111118;
+  --velvet-light: #1A1A24;
+  --orange: #FF6B35;
+  --violet: #8B5CF6;
+  --rose: #EC4899;
+  --teal: #00BFA5;
+  --text-on-dark: #FFFFFF;
+  --text-muted: #BBBBCC;
+  --text-secondary: #777788;
+  --border-dark: #1E1E2A;
+  --fuel-gradient: linear-gradient(135deg, #FF6B35, #EC4899, #8B5CF6);
+  --fuel-gradient-90: linear-gradient(90deg, #FF6B35, #EC4899, #8B5CF6);
+  --font-display: 'Satoshi', sans-serif;
+  --font-body: 'General Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-body); color: var(--text-on-dark); background: var(--velvet); overflow-x: hidden; }
+a { color: inherit; text-decoration: none; }
+.container { max-width: 1100px; margin: 0 auto; padding: 0 clamp(1.25rem, 4vw, 2.5rem); }
+section { padding: clamp(60px, 10vh, 120px) 0; position: relative; }
+
+.reveal { opacity: 0; transform: translateY(36px); transition: opacity 0.8s var(--ease-out-expo), transform 0.8s var(--ease-out-expo); }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-d1 { transition-delay: 0.08s; } .reveal-d2 { transition-delay: 0.16s; } .reveal-d3 { transition-delay: 0.24s; } .reveal-d4 { transition-delay: 0.32s; }
+
+.section-label { font-family: var(--font-mono); font-size: clamp(0.7rem, 1vw, 0.85rem); font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--orange); margin-bottom: clamp(0.75rem, 1.5vh, 1.25rem); }
+.section-title { font-family: var(--font-display); font-size: clamp(1.6rem, 3.5vw, 2.75rem); font-weight: 900; letter-spacing: -0.03em; line-height: 1.12; color: var(--text-on-dark); margin-bottom: clamp(1rem, 2vh, 1.5rem); }
+.section-sub { font-family: var(--font-body); font-size: clamp(0.95rem, 1.4vw, 1.15rem); color: var(--text-muted); line-height: 1.65; max-width: 640px; }
+.gradient-text { background: var(--fuel-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+.cta-btn { display: inline-flex; align-items: center; gap: 10px; padding: clamp(0.85rem, 1.5vw, 1.1rem) clamp(1.5rem, 3vw, 2.25rem); background: var(--orange); color: var(--velvet); font-family: var(--font-display); font-size: clamp(0.9rem, 1.2vw, 1.05rem); font-weight: 700; border: none; border-radius: 10px; cursor: pointer; transition: all 0.35s var(--ease-out-expo); position: relative; overflow: hidden; }
+.cta-btn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent); opacity: 0; transition: opacity 0.35s ease; }
+.cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(255, 107, 53, 0.35); }
+.cta-btn:hover::after { opacity: 1; }
+.cta-btn .arrow { transition: transform 0.3s var(--ease-out-expo); font-size: 1.1em; }
+.cta-btn:hover .arrow { transform: translateX(3px); }
+.cta-btn-ghost { display: inline-flex; align-items: center; gap: 8px; padding: clamp(0.7rem, 1.2vw, 0.9rem) clamp(1.2rem, 2vw, 1.75rem); background: transparent; color: var(--orange); font-family: var(--font-display); font-size: clamp(0.85rem, 1.1vw, 0.95rem); font-weight: 600; border: 1px solid rgba(255, 107, 53, 0.3); border-radius: 10px; cursor: pointer; transition: all 0.3s ease; }
+.cta-btn-ghost:hover { background: rgba(255, 107, 53, 0.08); border-color: var(--orange); }
+
+.topnav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: clamp(1rem, 2vh, 1.5rem) 0; transition: background 0.4s ease, backdrop-filter 0.4s ease; }
+.topnav.scrolled { background: rgba(10, 10, 15, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255,255,255,0.04); }
+.topnav .container { display: flex; align-items: center; justify-content: space-between; }
+.wordmark { font-family: var(--font-display); font-size: clamp(1.05rem, 1.6vw, 1.3rem); font-weight: 900; letter-spacing: -0.03em; }
+.wordmark span { background: var(--fuel-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.nav-cta { font-family: var(--font-display); font-size: clamp(0.8rem, 1vw, 0.9rem); font-weight: 600; color: var(--orange); padding: 0.5rem 1.25rem; border: 1px solid rgba(255, 107, 53, 0.3); border-radius: 8px; transition: all 0.3s ease; }
+.nav-cta:hover { background: rgba(255, 107, 53, 0.1); border-color: var(--orange); }
+.page-accent { position: fixed; top: 0; left: 0; right: 0; height: 2px; background: var(--fuel-gradient-90); z-index: 200; }
+
+/* Hero */
+.hero { min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; padding-top: 80px; background: radial-gradient(ellipse at 50% 70%, rgba(139,92,246,0.1) 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(255,107,53,0.06) 0%, transparent 55%), var(--velvet); background-size: 200% 200%, 200% 200%, 100% 100%; animation: heroDrift 20s ease-in-out infinite; }
+.hero .container { display: flex; flex-direction: column; gap: clamp(1.5rem, 3vh, 2.5rem); }
+.hero-headline { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3.8rem); font-weight: 900; letter-spacing: -0.04em; line-height: 1.08; max-width: 860px; }
+.hero-headline .quote-mark { color: var(--violet); }
+.hero-sub { font-family: var(--font-body); font-size: clamp(1rem, 1.5vw, 1.2rem); color: var(--text-muted); line-height: 1.7; max-width: 620px; }
+.hero-tags { display: flex; align-items: center; gap: clamp(1rem, 2vw, 2rem); flex-wrap: wrap; }
+.hero-tags .tag { font-family: var(--font-mono); font-size: clamp(0.72rem, 0.95vw, 0.82rem); color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.hero-tags .tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+
+/* Scenario */
+.scenario-section { background: radial-gradient(ellipse at 20% 80%, rgba(236,72,153,0.06) 0%, transparent 50%), var(--velvet); }
+.scenario-card { background: var(--velvet-mid); border-radius: clamp(12px, 2vw, 20px); border: 1px solid rgba(255,255,255,0.06); overflow: hidden; margin-top: clamp(1.5rem, 3vh, 2.5rem); max-width: 820px; }
+.scenario-card::before { content: ''; display: block; height: 2px; background: var(--fuel-gradient); }
+.scenario-body { padding: clamp(2rem, 4vw, 3rem); }
+.scenario-text { font-family: var(--font-body); font-size: clamp(0.95rem, 1.3vw, 1.1rem); color: var(--text-muted); line-height: 1.75; }
+.scenario-text p { margin-bottom: clamp(1rem, 2vh, 1.5rem); }
+.scenario-text p:last-child { margin-bottom: 0; }
+.scenario-text strong { color: var(--text-on-dark); font-weight: 600; }
+.scenario-text em { color: var(--rose); font-style: normal; font-weight: 500; }
+.scenario-verdict { margin-top: clamp(1.25rem, 2.5vh, 2rem); padding-top: clamp(1.25rem, 2.5vh, 2rem); border-top: 1px solid rgba(255,255,255,0.06); font-family: var(--font-display); font-size: clamp(1rem, 1.5vw, 1.2rem); font-weight: 700; }
+
+/* =========================================
+   TABBED FEATURE SECTION
+   ========================================= */
+.feature-section { background: radial-gradient(ellipse at 70% 40%, rgba(139,92,246,0.07) 0%, transparent 50%), var(--velvet); }
+.feature-section > .container { max-width: 1300px; }
+.feature-header { text-align: center; margin-bottom: clamp(2rem, 4vh, 3rem); }
+.feature-header .section-sub { margin: 0 auto; }
+.feature-tabs { display: flex; justify-content: center; gap: clamp(0.4rem, 0.8vw, 0.6rem); margin-bottom: clamp(2rem, 4vh, 3rem); }
+.feature-tab { display: flex; align-items: center; gap: clamp(0.4rem, 0.7vw, 0.6rem); padding: clamp(0.6rem, 1.2vw, 0.9rem) clamp(1rem, 2vw, 1.5rem); background: var(--velvet-mid); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; color: var(--text-secondary); font-family: var(--font-display); font-size: clamp(0.82rem, 1.1vw, 0.95rem); font-weight: 600; cursor: pointer; transition: all 0.3s ease; user-select: none; }
+.feature-tab:hover { background: var(--velvet-light); color: var(--text-muted); border-color: rgba(255,255,255,0.1); }
+.feature-tab.active { background: var(--velvet-light); color: var(--text-on-dark); border-color: rgba(255,255,255,0.12); box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+.feature-tab .tab-icon { font-size: 1.1em; line-height: 1; }
+.feature-tab.active .tab-icon { color: var(--orange); }
+.feature-panels {
+  position: relative;
+}
+
+.feature-panel {
+  display: none;
+  flex-direction: column;
+  background: var(--velvet-mid);
+  border-radius: clamp(12px, 2vw, 20px);
+  border: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.25);
+}
+
+.feature-panel.active {
+  display: flex;
+  animation: panelExpand 0.5s var(--ease-out-expo);
+}
+
+@keyframes panelExpand {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.panel-text {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.75rem, 1.5vw, 1.5rem);
+  padding: clamp(0.9rem, 1.5vw, 1.25rem) clamp(1.25rem, 2.5vw, 2rem);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  flex-wrap: wrap;
+}
+
+.panel-badge { display: inline-flex; align-items: center; gap: 6px; padding: clamp(0.2rem, 0.35vw, 0.3rem) clamp(0.5rem, 0.9vw, 0.75rem); background: rgba(255,107,53,0.1); border: 1px solid rgba(255,107,53,0.2); border-radius: 6px; font-family: var(--font-mono); font-size: clamp(0.65rem, 0.8vw, 0.72rem); font-weight: 500; color: var(--orange); letter-spacing: 0.05em; text-transform: uppercase; flex-shrink: 0; }
+.panel-title { font-family: var(--font-display); font-size: clamp(0.95rem, 1.5vw, 1.25rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; flex-shrink: 0; }
+.panel-desc { font-size: clamp(0.8rem, 0.95vw, 0.88rem); color: var(--text-muted); line-height: 1.5; flex: 1; min-width: 180px; }
+.panel-text .cta-btn-ghost { display: none; }
+
+.panel-visual {
+  background: var(--velvet);
+  overflow: hidden;
+  position: relative;
+  transition: height 0.5s var(--ease-out-expo);
+}
+
+/* Adaptive heights per tab */
+.feature-panels[data-active="graph"] .panel-visual,
+.panel-visual { height: 520px; }
+.feature-panels[data-active="lineage"] .panel-visual { height: 620px; }
+.feature-panels[data-active="timeline"] .panel-visual { height: 650px; }
+
+.panel-visual iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  background: var(--velvet);
+}
+
+/* Questions */
+.questions-section { background: radial-gradient(ellipse at 40% 60%, rgba(0,191,165,0.05) 0%, transparent 50%), var(--velvet); }
+.questions-list { margin-top: clamp(2rem, 4vh, 3rem); display: flex; flex-direction: column; gap: clamp(0.75rem, 1.5vh, 1rem); max-width: 820px; }
+.question-item { display: flex; gap: clamp(1rem, 2vw, 1.5rem); padding: clamp(1.25rem, 2.5vw, 2rem); background: var(--velvet-mid); border-radius: clamp(10px, 1.5vw, 16px); border: 1px solid rgba(255,255,255,0.06); align-items: flex-start; }
+.question-number { font-family: var(--font-mono); font-size: clamp(0.7rem, 0.9vw, 0.8rem); font-weight: 500; color: var(--violet); padding: clamp(0.3rem, 0.5vw, 0.4rem) clamp(0.5rem, 0.8vw, 0.65rem); background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.2); border-radius: 6px; flex-shrink: 0; letter-spacing: 0.05em; }
+.question-text { font-family: var(--font-display); font-size: clamp(0.95rem, 1.4vw, 1.15rem); font-weight: 600; line-height: 1.45; }
+.question-text span { color: var(--text-muted); font-weight: 400; font-family: var(--font-body); display: block; margin-top: clamp(0.3rem, 0.5vh, 0.5rem); font-size: clamp(0.85rem, 1.1vw, 0.95rem); }
+
+/* Entry points */
+.entry-section { background: radial-gradient(ellipse at 50% 50%, rgba(139,92,246,0.05) 0%, transparent 50%), var(--velvet); }
+.entry-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(0.5rem, 1vw, 0.75rem); margin-top: clamp(2rem, 4vh, 3rem); }
+.entry-item { text-align: center; padding: clamp(1.25rem, 2vw, 1.75rem) clamp(0.75rem, 1.5vw, 1.25rem); background: var(--velvet-mid); border-radius: clamp(10px, 1.5vw, 14px); border: 1px solid rgba(255,255,255,0.06); }
+.entry-value { font-family: var(--font-display); font-size: clamp(1.1rem, 2vw, 1.6rem); font-weight: 900; letter-spacing: -0.03em; margin-bottom: clamp(0.2rem, 0.4vh, 0.3rem); }
+.entry-item:nth-child(1) .entry-value { color: var(--orange); }
+.entry-item:nth-child(2) .entry-value { color: var(--teal); }
+.entry-item:nth-child(3) .entry-value { color: var(--violet); }
+.entry-item:nth-child(4) .entry-value { color: var(--rose); }
+.entry-desc { font-size: clamp(0.78rem, 0.95vw, 0.88rem); color: var(--text-secondary); line-height: 1.4; }
+
+/* Final CTA */
+.final-cta { text-align: center; background: radial-gradient(ellipse at 50% 80%, rgba(255,107,53,0.08) 0%, transparent 55%), radial-gradient(ellipse at 30% 30%, rgba(139,92,246,0.06) 0%, transparent 50%), var(--velvet); }
+.final-cta .container { display: flex; flex-direction: column; align-items: center; gap: clamp(1rem, 2vh, 1.5rem); }
+.final-cta .section-title { max-width: 650px; }
+.final-cta .section-sub { text-align: center; }
+.contact-line { font-family: var(--font-mono); font-size: clamp(0.72rem, 0.9vw, 0.82rem); color: var(--text-secondary); margin-top: clamp(0.25rem, 0.5vh, 0.5rem); }
+.contact-line a { color: var(--text-muted); transition: color 0.25s ease; }
+.contact-line a:hover { color: var(--orange); }
+.footer { padding: clamp(1.5rem, 3vh, 2.5rem) 0; border-top: 1px solid rgba(255,255,255,0.04); }
+.footer .container { display: flex; justify-content: space-between; align-items: center; }
+.footer span { font-family: var(--font-mono); font-size: clamp(0.68rem, 0.85vw, 0.78rem); color: var(--text-secondary); }
+
+/* =========================================
+   POLISH: INTERACTION STATES
+   ========================================= */
+.cta-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+}
+
+.cta-btn:focus-visible,
+.cta-btn-ghost:focus-visible,
+.nav-cta:focus-visible,
+.feature-tab:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+
+.cta-btn-ghost:active {
+  background: rgba(255, 107, 53, 0.12);
+}
+
+/* Question item hover */
+.question-item {
+  transition: transform 0.35s var(--ease-out-expo), box-shadow 0.35s var(--ease-out-expo), border-color 0.3s ease;
+}
+
+.question-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  border-color: rgba(255,255,255,0.1);
+}
+
+/* Entry item hover */
+.entry-item {
+  transition: transform 0.3s var(--ease-out-expo), border-color 0.3s ease;
+}
+
+.entry-item:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,0.1);
+}
+
+/* Scenario card hover */
+.scenario-card {
+  transition: border-color 0.3s ease, box-shadow 0.35s ease;
+}
+
+.scenario-card:hover {
+  border-color: rgba(255,255,255,0.1);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+/* =========================================
+   ANIMATE: HERO GRADIENT DRIFT
+   ========================================= */
+@keyframes heroDrift {
+  0%, 100% { background-position: 50% 70%, 80% 20%; }
+  33% { background-position: 55% 65%, 75% 25%; }
+  66% { background-position: 45% 75%, 85% 15%; }
+}
+
+/* =========================================
+   DELIGHT: TAB SWITCH INDICATOR
+   ========================================= */
+.feature-tab {
+  position: relative;
+}
+
+.feature-tab::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--fuel-gradient-90);
+  transition: width 0.3s var(--ease-out-expo), left 0.3s var(--ease-out-expo);
+  border-radius: 1px;
+}
+
+.feature-tab.active::after {
+  width: 60%;
+  left: 20%;
+}
+
+/* =========================================
+   TYPESET: LINE LENGTH CONSTRAINTS
+   ========================================= */
+.panel-desc,
+.section-sub,
+.scenario-text {
+  max-width: 60ch;
+}
+
+.question-text span {
+  max-width: 55ch;
+}
+
+@media (max-width: 900px) { .panel-text { flex-direction: column; align-items: flex-start; } .feature-panels[data-active="graph"] .panel-visual, .panel-visual { height: 400px; } .feature-panels[data-active="lineage"] .panel-visual { height: 500px; } .feature-panels[data-active="timeline"] .panel-visual { height: 520px; } .entry-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) { .hero-headline { font-size: clamp(1.7rem, 7.5vw, 2.6rem); } .feature-tabs { flex-direction: column; align-items: stretch; } }
+@media (max-width: 480px) { section { padding: clamp(40px, 8vh, 80px) 0; } .entry-grid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } @keyframes panelExpand { from { opacity: 1; transform: none; } } html { scroll-behavior: auto; } .hero { animation: none; } .question-item, .entry-item, .scenario-card { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="page-accent"></div>
+<nav class="topnav" id="topnav">
+  <div class="container">
+    <div class="wordmark"><span>naptha</span></div>
+    <a href="mailto:thomas@naptha.ai?subject=Naptha%20intro%20%E2%80%94%20%5BCompany%5D" class="nav-cta">Book a call</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="section-label reveal">Decision traceability</div>
+    <h1 class="hero-headline reveal reveal-d1"><span class="quote-mark">"</span>Why did we build that?<span class="quote-mark">"</span><br>If the answer takes a week, <span class="gradient-text">you have a problem.</span></h1>
+    <p class="hero-sub reveal reveal-d2">Naptha traces every product decision back to the signals that informed it. Across every source, every team, every quarter. Automatically.</p>
+    <div class="hero-tags reveal reveal-d3">
+      <a href="mailto:thomas@naptha.ai?subject=Naptha%20intro%20%E2%80%94%20%5BCompany%5D" class="cta-btn">Make every decision traceable <span class="arrow">&rarr;</span></a>
+    </div>
+    <div class="hero-tags reveal reveal-d4">
+      <span class="tag"><span class="dot"></span> Institutional memory</span>
+      <span class="tag"><span class="dot"></span> Full audit trail</span>
+      <span class="tag"><span class="dot"></span> Board-ready evidence</span>
+    </div>
+  </div>
+</section>
+
+<!-- SCENARIO -->
+<section class="scenario-section">
+  <div class="container">
+    <div class="section-label reveal">Sound familiar?</div>
+    <h2 class="section-title reveal reveal-d1">The board meeting you've already had</h2>
+    <div class="scenario-card reveal reveal-d2">
+      <div class="scenario-body">
+        <div class="scenario-text">
+          <p>Board meeting. The question: <strong>"What was the ROI of last quarter's biggest bet?"</strong></p>
+          <p>Your VP pulls data from Amplitude. A PM digs through Intercom. Someone searches Slack. <em>Four days later</em>, a Google Doc appears. Half the reasoning is reconstructed from memory.</p>
+          <p>The person who made the original decision <em>left two months ago.</em></p>
+        </div>
+        <div class="scenario-verdict">This isn't a people failure. It's an infrastructure failure.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TABBED FEATURES WITH VISUALIZATIONS -->
+<section class="feature-section">
+  <div class="container">
+    <div class="feature-header reveal">
+      <div class="section-label">What Naptha builds</div>
+      <h2 class="section-title">From scattered signals to <span class="gradient-text">traceable decisions</span></h2>
+      <p class="section-sub">Every insight links back to its sources. Every decision has a paper trail. And it compounds every week.</p>
+    </div>
+
+    <div class="feature-tabs reveal reveal-d1">
+      <button class="feature-tab active" data-tab="graph"><span class="tab-icon">&#9677;</span> Context Graph</button>
+      <button class="feature-tab" data-tab="lineage"><span class="tab-icon">&#10132;</span> Decision Lineage</button>
+      <button class="feature-tab" data-tab="timeline"><span class="tab-icon">&#9201;</span> Compounding Memory</button>
+    </div>
+
+    <div class="feature-panels reveal reveal-d2">
+
+      <!-- CONTEXT GRAPH -->
+      <div class="feature-panel active" id="panel-graph">
+        <div class="panel-text">
+          <span class="panel-badge">&#9677; Context Graph</span>
+          <h3 class="panel-title">Every signal, connected</h3>
+          <p class="panel-desc">Naptha builds a knowledge graph that links sources to signals to insights to decisions. Click any node to trace back to raw data. The graph grows richer every week. Patterns emerge that no single tool could surface.</p>
+          <a href="mailto:thomas@naptha.ai?subject=Naptha%20intro%20%E2%80%94%20%5BCompany%5D" class="cta-btn-ghost">See it on your data <span class="arrow">&rarr;</span></a>
+        </div>
+        <div class="panel-visual">
+          <iframe src="context-graph.html" title="Context Graph — Interactive"></iframe>
+        </div>
+      </div>
+
+      <!-- DECISION LINEAGE -->
+      <div class="feature-panel" id="panel-lineage">
+        <div class="panel-text">
+          <span class="panel-badge" style="background:rgba(236,72,153,0.1);border-color:rgba(236,72,153,0.2);color:var(--rose);">&#10132; Decision Lineage</span>
+          <h3 class="panel-title">Trace any decision to its origin</h3>
+          <p class="panel-desc">Every product decision has a lineage: sources to signals to insights to report. Click any node in the Sankey diagram to see exactly what data contributed. Board-ready in minutes, not days.</p>
+          <a href="mailto:thomas@naptha.ai?subject=Naptha%20intro%20%E2%80%94%20%5BCompany%5D" class="cta-btn-ghost">See it on your data <span class="arrow">&rarr;</span></a>
+        </div>
+        <div class="panel-visual">
+          <iframe src="report-lineage.html" title="Report Lineage — Interactive"></iframe>
+        </div>
+      </div>
+
+      <!-- COMPOUNDING MEMORY -->
+      <div class="feature-panel" id="panel-timeline">
+        <div class="panel-text">
+          <span class="panel-badge" style="background:rgba(0,191,165,0.1);border-color:rgba(0,191,165,0.2);color:var(--teal);">&#9201; Compounding</span>
+          <h3 class="panel-title">Memory that doesn't leave when people do</h3>
+          <p class="panel-desc">Qualitative signals, quantitative metrics, and agent traces on a unified timeline. Watch patterns emerge over time. Every data point linked, every week building on the last. The graph never forgets.</p>
+          <a href="mailto:thomas@naptha.ai?subject=Naptha%20intro%20%E2%80%94%20%5BCompany%5D" class="cta-btn-ghost">See it on your data <span class="arrow">&rarr;</span></a>
+        </div>
+        <div class="panel-visual">
+          <iframe src="unified-timeline.html" title="Unified Timeline — Interactive"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- THREE QUESTIONS -->
+<section class="questions-section">
+  <div class="container">
+    <div class="section-label reveal">What you can finally answer</div>
+    <h2 class="section-title reveal reveal-d1">Three questions that shouldn't take a week</h2>
+    <div class="questions-list">
+      <div class="question-item reveal reveal-d1">
+        <span class="question-number">01</span>
+        <div class="question-text">"Which decisions this quarter were backed by cross-source data, and which were gut calls?"<span>See every team's reasoning at a glance. Data-backed or flagged for review.</span></div>
+      </div>
+      <div class="question-item reveal reveal-d2">
+        <span class="question-number">02</span>
+        <div class="question-text">"When did we first see signals about this problem, and what did we do about it?"<span>Trace any issue back through time. See the first signal, every mention since, and every decision made.</span></div>
+      </div>
+      <div class="question-item reveal reveal-d3">
+        <span class="question-number">03</span>
+        <div class="question-text">"What institutional knowledge did we lose when that PM left?"<span>Nothing. Context lives in the graph, not in someone's head.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ENTRY POINTS -->
+<section class="entry-section">
+  <div class="container">
+    <div class="section-label reveal">Getting started</div>
+    <h2 class="section-title reveal reveal-d1">Low friction. High leverage.</h2>
+    <div class="entry-grid">
+      <div class="entry-item reveal reveal-d1"><div class="entry-value">$600/mo</div><div class="entry-desc">Starting price</div></div>
+      <div class="entry-item reveal reveal-d2"><div class="entry-value">2 weeks</div><div class="entry-desc">To first report</div></div>
+      <div class="entry-item reveal reveal-d3"><div class="entry-value">0 eng</div><div class="entry-desc">No engineering needed</div></div>
+      <div class="entry-item reveal reveal-d4"><div class="entry-value">&infin;</div><div class="entry-desc">Memory that persists</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+  <div class="container">
+    <div class="section-label reveal">Get started</div>
+    <h2 class="section-title reveal reveal-d1">Your product org's decisions<br>deserve <span class="gradient-text">a paper trail.</span></h2>
+    <p class="section-sub reveal reveal-d2">Book a 30-min call. We'll show you what traceability looks like on your data.</p>
+    <a href="mailto:thomas@naptha.ai?subject=Naptha%20intro%20%E2%80%94%20%5BCompany%5D" class="cta-btn reveal reveal-d3">Book a call with us <span class="arrow">&rarr;</span></a>
+    <p class="contact-line reveal reveal-d4"><a href="mailto:richard@naptha.ai">richard@naptha.ai</a> &middot; <a href="mailto:thomas@naptha.ai">thomas@naptha.ai</a></p>
+  </div>
+</section>
+
+<footer class="footer"><div class="container"><span>&copy; 2026 Naptha</span><span>Datadog for product teams</span></div></footer>
+
+<script>
+(function () {
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver(
+    (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+    { threshold: 0.15, rootMargin: '0px 0px -40px 0px' }
+  );
+  reveals.forEach((el) => observer.observe(el));
+
+  const nav = document.getElementById('topnav');
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (!ticking) { requestAnimationFrame(() => { nav.classList.toggle('scrolled', window.scrollY > 40); ticking = false; }); ticking = true; }
+  });
+
+  const tabs = document.querySelectorAll('.feature-tab');
+  const panels = document.querySelectorAll('.feature-panel');
+  const panelsWrap = document.querySelector('.feature-panels');
+  panelsWrap.setAttribute('data-active', 'graph');
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      tabs.forEach((t) => t.classList.remove('active'));
+      panels.forEach((p) => p.classList.remove('active'));
+      tab.classList.add('active');
+      panelsWrap.setAttribute('data-active', target);
+      const activePanel = document.getElementById('panel-' + target);
+      activePanel.classList.add('active');
+      // Reload iframe so D3 recalculates dimensions in visible container
+      const iframe = activePanel.querySelector('iframe');
+      if (iframe) {
+        const src = iframe.getAttribute('src');
+        iframe.removeAttribute('src');
+        requestAnimationFrame(() => iframe.setAttribute('src', src));
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>
