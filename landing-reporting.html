@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Naptha · Weekly product intelligence, delivered to Slack</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&f[]=general-sans@400,500,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   DESIGN TOKENS
+   =========================================== */
+:root {
+  --velvet: #0A0A0F;
+  --velvet-mid: #111118;
+  --velvet-light: #1A1A24;
+  --orange: #FF6B35;
+  --violet: #8B5CF6;
+  --rose: #EC4899;
+  --teal: #00BFA5;
+  --text-on-dark: #FFFFFF;
+  --text-muted: #BBBBCC;
+  --text-secondary: #777788;
+  --border-dark: #1E1E2A;
+  --fuel-gradient: linear-gradient(135deg, #FF6B35, #EC4899, #8B5CF6);
+  --fuel-gradient-90: linear-gradient(90deg, #FF6B35, #EC4899, #8B5CF6);
+  --font-display: 'Satoshi', sans-serif;
+  --font-body: 'General Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body { font-family: var(--font-body); color: var(--text-on-dark); background: var(--velvet); overflow-x: hidden; }
+a { color: inherit; text-decoration: none; }
+
+/* ===========================================
+   LAYOUT
+   =========================================== */
+.container { max-width: 1100px; margin: 0 auto; padding: 0 clamp(1.25rem, 4vw, 2.5rem); }
+section { padding: clamp(60px, 10vh, 120px) 0; position: relative; }
+
+/* ===========================================
+   SCROLL REVEAL
+   =========================================== */
+.reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo); }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-d1 { transition-delay: 0.08s; }
+.reveal-d2 { transition-delay: 0.16s; }
+.reveal-d3 { transition-delay: 0.24s; }
+.reveal-d4 { transition-delay: 0.32s; }
+
+/* ===========================================
+   TYPOGRAPHY
+   =========================================== */
+.section-label { font-family: var(--font-mono); font-size: clamp(0.7rem, 1vw, 0.85rem); font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--orange); margin-bottom: clamp(0.75rem, 1.5vh, 1.25rem); }
+.section-title { font-family: var(--font-display); font-size: clamp(1.6rem, 3.5vw, 2.75rem); font-weight: 900; letter-spacing: -0.03em; line-height: 1.12; color: var(--text-on-dark); margin-bottom: clamp(1rem, 2vh, 1.5rem); }
+.section-sub { font-family: var(--font-body); font-size: clamp(0.95rem, 1.4vw, 1.15rem); color: var(--text-muted); line-height: 1.65; max-width: 60ch; }
+.gradient-text { background: var(--fuel-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+/* ===========================================
+   CTA
+   =========================================== */
+.cta-btn { display: inline-flex; align-items: center; gap: 8px; padding: clamp(0.75rem, 1.2vw, 0.95rem) clamp(1.25rem, 2.5vw, 1.85rem); background: var(--orange); color: var(--velvet); font-family: var(--font-display); font-size: clamp(0.85rem, 1.1vw, 0.95rem); font-weight: 700; border: none; border-radius: 10px; cursor: pointer; transition: all 0.35s var(--ease-out-expo); position: relative; overflow: hidden; }
+.cta-btn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent); opacity: 0; transition: opacity 0.35s ease; }
+.cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(255, 107, 53, 0.35); }
+.cta-btn:hover::after { opacity: 1; }
+.cta-btn:active { transform: translateY(1px); box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2); }
+.cta-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.cta-btn .arrow { transition: transform 0.3s var(--ease-out-expo); font-size: 1.1em; }
+.cta-btn:hover .arrow { transform: translateX(3px); }
+
+/* ===========================================
+   NAV
+   =========================================== */
+.page-accent { position: fixed; top: 0; left: 0; right: 0; height: 2px; background: var(--fuel-gradient-90); z-index: 200; }
+.topnav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: clamp(1rem, 2vh, 1.5rem) 0; transition: background 0.4s ease, backdrop-filter 0.4s ease; }
+.topnav.scrolled { background: rgba(10, 10, 15, 0.88); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255,255,255,0.04); }
+.topnav .container { display: flex; align-items: center; justify-content: space-between; }
+.wordmark { font-family: var(--font-display); font-size: clamp(1.05rem, 1.6vw, 1.3rem); font-weight: 900; letter-spacing: -0.03em; }
+.wordmark span { background: var(--fuel-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.nav-cta { font-family: var(--font-display); font-size: clamp(0.8rem, 1vw, 0.9rem); font-weight: 600; color: var(--orange); padding: 0.5rem 1.25rem; border: 1px solid rgba(255, 107, 53, 0.3); border-radius: 8px; transition: all 0.3s ease; }
+.nav-cta:hover { background: rgba(255, 107, 53, 0.1); border-color: var(--orange); }
+.nav-cta:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+/* ===========================================
+   HERO
+   =========================================== */
+.hero { min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; padding-top: 80px; background: radial-gradient(ellipse at 30% 70%, rgba(139, 92, 246, 0.09) 0%, transparent 55%), radial-gradient(ellipse at 70% 25%, rgba(255, 107, 53, 0.07) 0%, transparent 55%), var(--velvet); background-size: 200% 200%, 200% 200%, 100% 100%; animation: heroDrift 20s ease-in-out infinite; }
+@keyframes heroDrift { 0%, 100% { background-position: 30% 70%, 70% 25%; } 33% { background-position: 35% 65%, 65% 30%; } 66% { background-position: 25% 75%, 75% 20%; } }
+.hero .container { display: flex; flex-direction: column; gap: clamp(1.5rem, 3vh, 2.5rem); }
+.hero-headline { font-family: var(--font-display); font-size: clamp(2.2rem, 5.5vw, 4.2rem); font-weight: 900; letter-spacing: -0.04em; line-height: 1.08; max-width: 800px; }
+.hero-sub { font-family: var(--font-body); font-size: clamp(1rem, 1.5vw, 1.2rem); color: var(--text-muted); line-height: 1.7; max-width: 600px; }
+.hero-tags { display: flex; align-items: center; gap: clamp(1rem, 2vw, 2rem); flex-wrap: wrap; }
+.hero-tags .tag { font-family: var(--font-mono); font-size: clamp(0.72rem, 0.95vw, 0.82rem); color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.hero-tags .tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+
+/* ===========================================
+   MATH CARD
+   =========================================== */
+.math-section { background: radial-gradient(ellipse at 80% 50%, rgba(255,107,53,0.05) 0%, transparent 50%), var(--velvet); }
+.math-card { background: var(--velvet-mid); border-radius: clamp(12px, 2vw, 20px); border: 1px solid rgba(255,255,255,0.06); overflow: hidden; margin-top: clamp(1.5rem, 3vh, 2.5rem); }
+.math-card-inner { padding: clamp(2rem, 4vw, 3.5rem); }
+.math-rows { display: flex; flex-direction: column; gap: clamp(1rem, 2vh, 1.75rem); }
+.math-formula { font-family: var(--font-mono); font-size: clamp(0.88rem, 1.3vw, 1.1rem); color: var(--text-muted); line-height: 1.5; }
+.math-formula .num { color: var(--text-on-dark); font-weight: 500; }
+.math-formula .highlight { color: var(--rose); font-weight: 500; }
+.math-divider { height: 1px; background: rgba(255,255,255,0.06); margin: clamp(0.5rem, 1vh, 1rem) 0; }
+.math-result { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: clamp(1rem, 2vw, 2rem); padding-top: clamp(0.5rem, 1vh, 1rem); }
+.math-result-left { display: flex; flex-direction: column; gap: 4px; }
+.math-result-value { font-family: var(--font-display); font-size: clamp(1.4rem, 3vw, 2.2rem); font-weight: 900; letter-spacing: -0.03em; background: var(--fuel-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.math-result-label { font-family: var(--font-body); font-size: clamp(0.82rem, 1vw, 0.92rem); color: var(--text-secondary); }
+.math-naptha { display: flex; align-items: center; gap: clamp(0.5rem, 1vw, 0.75rem); padding: clamp(0.6rem, 1vw, 0.85rem) clamp(1rem, 2vw, 1.5rem); background: rgba(0,191,165,0.08); border: 1px solid rgba(0,191,165,0.2); border-radius: 10px; }
+.math-naptha-price { font-family: var(--font-display); font-size: clamp(1.2rem, 2vw, 1.6rem); font-weight: 900; color: var(--teal); }
+.math-naptha-label { font-family: var(--font-mono); font-size: clamp(0.7rem, 0.9vw, 0.8rem); color: var(--teal); opacity: 0.8; }
+
+/* ===========================================
+   REPORT MOCKUP — THE HERO VISUAL
+   =========================================== */
+.report-section { background: radial-gradient(ellipse at 50% 30%, rgba(139, 92, 246, 0.06) 0%, transparent 55%), var(--velvet); }
+.report-mockup { margin-top: clamp(2rem, 4vh, 3rem); background: var(--velvet-mid); border-radius: clamp(12px, 2vw, 20px); border: 1px solid rgba(255,255,255,0.06); overflow: hidden; box-shadow: 0 8px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03); transition: box-shadow 0.4s ease; }
+.report-mockup:hover { box-shadow: 0 12px 56px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05); }
+
+/* Slack chrome */
+.slack-chrome { display: flex; align-items: center; gap: clamp(6px, 1vw, 10px); padding: clamp(10px, 1.5vw, 16px) clamp(14px, 2vw, 22px); border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); }
+.slack-dots { display: flex; gap: 5px; margin-right: 6px; }
+.slack-dots span { width: 9px; height: 9px; border-radius: 50%; }
+.slack-dots span:nth-child(1) { background: rgba(255,107,53,0.6); }
+.slack-dots span:nth-child(2) { background: rgba(255,199,0,0.5); }
+.slack-dots span:nth-child(3) { background: rgba(0,191,165,0.5); }
+.slack-hash { font-size: clamp(0.9rem, 1.3vw, 1.15rem); color: var(--text-secondary); }
+.slack-channel { font-family: var(--font-display); font-size: clamp(0.85rem, 1.1vw, 1rem); font-weight: 700; }
+
+/* Message */
+.slack-message { padding: clamp(16px, 3vw, 28px) clamp(14px, 2.5vw, 24px); display: flex; gap: clamp(8px, 1.5vw, 14px); }
+.slack-avatar { width: clamp(32px, 4vw, 40px); height: clamp(32px, 4vw, 40px); border-radius: 8px; flex-shrink: 0; background: linear-gradient(135deg, rgba(255,107,53,0.35), rgba(139,92,246,0.35)); border: 1px solid rgba(255,107,53,0.25); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: clamp(0.75rem, 1vw, 0.9rem); font-weight: 900; color: var(--orange); }
+.slack-msg-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: clamp(6px, 1vw, 10px); }
+.slack-msg-meta { display: flex; align-items: baseline; gap: clamp(6px, 1vw, 10px); }
+.slack-msg-name { font-family: var(--font-display); font-size: clamp(0.8rem, 1vw, 0.92rem); font-weight: 700; }
+.slack-msg-badge { font-family: var(--font-mono); font-size: clamp(0.55rem, 0.65vw, 0.6rem); background: rgba(139,92,246,0.15); color: var(--violet); padding: 2px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+.slack-msg-time { font-family: var(--font-mono); font-size: clamp(0.6rem, 0.72vw, 0.68rem); color: var(--text-secondary); }
+.slack-msg-title { font-family: var(--font-display); font-size: clamp(0.9rem, 1.2vw, 1.05rem); font-weight: 700; }
+
+/* Report blocks */
+.report-blocks { display: flex; flex-direction: column; gap: clamp(6px, 1vw, 10px); margin-top: clamp(4px, 0.6vw, 6px); }
+.report-block { padding: clamp(10px, 1.5vw, 16px) clamp(12px, 2vw, 18px); background: var(--velvet); border-radius: 0 8px 8px 0; border-left: 3px solid; border-top: 1px solid rgba(255,255,255,0.03); border-right: 1px solid rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.03); transition: border-color 0.3s ease, background 0.3s ease; }
+.report-block:hover { background: rgba(255,255,255,0.015); }
+.report-block.insight { border-left-color: var(--violet); }
+.report-block.confirmed { border-left-color: var(--teal); }
+.report-block.warning { border-left-color: var(--orange); }
+
+.block-title { font-family: var(--font-display); font-size: clamp(0.78rem, 1vw, 0.9rem); font-weight: 700; margin-bottom: clamp(3px, 0.4vw, 5px); display: flex; align-items: center; gap: 6px; }
+.block-title .block-icon { font-size: 0.9em; }
+.block-desc { font-size: clamp(0.72rem, 0.9vw, 0.82rem); color: var(--text-muted); line-height: 1.55; }
+.block-sources { display: flex; flex-wrap: wrap; gap: clamp(4px, 0.5vw, 6px); margin-top: clamp(6px, 0.8vw, 8px); }
+.source-pill { font-family: var(--font-mono); font-size: clamp(0.58rem, 0.7vw, 0.65rem); color: var(--text-secondary); background: var(--velvet-mid); padding: clamp(2px, 0.3vw, 3px) clamp(6px, 0.8vw, 8px); border-radius: 4px; border: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 4px; }
+.source-pill .pill-dot { width: 5px; height: 5px; border-radius: 2px; background: var(--orange); flex-shrink: 0; }
+
+/* Typing indicator */
+.slack-typing { padding: clamp(8px, 1.2vw, 12px) clamp(14px, 2.5vw, 24px) clamp(14px, 2vw, 20px); border-top: 1px solid rgba(255,255,255,0.04); display: flex; align-items: center; gap: clamp(8px, 1.2vw, 12px); }
+.typing-avatar { width: clamp(20px, 2.5vw, 26px); height: clamp(20px, 2.5vw, 26px); border-radius: 5px; background: var(--velvet-light); border: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; font-size: clamp(0.55rem, 0.7vw, 0.65rem); color: var(--text-secondary); flex-shrink: 0; }
+.typing-text { font-size: clamp(0.7rem, 0.88vw, 0.8rem); color: var(--text-secondary); font-style: italic; }
+.typing-dots { display: inline-flex; gap: 3px; margin-left: 4px; }
+.typing-dots span { width: 4px; height: 4px; border-radius: 50%; background: var(--text-secondary); animation: typeBounce 1.4s infinite; }
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typeBounce { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+
+/* ===========================================
+   TABBED FEATURES
+   =========================================== */
+.feature-section { background: radial-gradient(ellipse at 20% 60%, rgba(0,191,165,0.05) 0%, transparent 50%), var(--velvet); }
+.feature-section > .container { max-width: 1300px; }
+.feature-header { text-align: center; margin-bottom: clamp(2rem, 4vh, 3rem); }
+.feature-header .section-sub { margin: 0 auto; }
+
+.feature-tabs { display: flex; justify-content: center; gap: clamp(0.4rem, 0.8vw, 0.6rem); margin-bottom: clamp(2rem, 4vh, 3rem); }
+.feature-tab { display: flex; align-items: center; gap: clamp(0.4rem, 0.7vw, 0.6rem); padding: clamp(0.6rem, 1.2vw, 0.9rem) clamp(1rem, 2vw, 1.5rem); background: var(--velvet-mid); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; color: var(--text-secondary); font-family: var(--font-display); font-size: clamp(0.82rem, 1.1vw, 0.95rem); font-weight: 600; cursor: pointer; transition: all 0.3s ease; user-select: none; position: relative; }
+.feature-tab:hover { background: var(--velvet-light); color: var(--text-muted); border-color: rgba(255,255,255,0.1); }
+.feature-tab.active { background: var(--velvet-light); color: var(--text-on-dark); border-color: rgba(255,255,255,0.12); box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+.feature-tab .tab-icon { font-size: 1.1em; line-height: 1; }
+.feature-tab.active .tab-icon { color: var(--orange); }
+.feature-tab:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.feature-tab::after { content: ''; position: absolute; bottom: -2px; left: 50%; width: 0; height: 2px; background: var(--fuel-gradient-90); transition: width 0.3s var(--ease-out-expo), left 0.3s var(--ease-out-expo); border-radius: 1px; }
+.feature-tab.active::after { width: 60%; left: 20%; }
+
+.feature-panels { position: relative; }
+.feature-panel { display: none; flex-direction: column; background: var(--velvet-mid); border-radius: clamp(12px, 2vw, 20px); border: 1px solid rgba(255,255,255,0.06); overflow: hidden; box-shadow: 0 4px 32px rgba(0,0,0,0.25); }
+.feature-panel.active { display: flex; animation: panelExpand 0.5s var(--ease-out-expo); }
+@keyframes panelExpand { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+.panel-text { display: flex; align-items: center; gap: clamp(0.75rem, 1.5vw, 1.5rem); padding: clamp(0.9rem, 1.5vw, 1.25rem) clamp(1.25rem, 2.5vw, 2rem); border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); flex-wrap: wrap; }
+.panel-badge { display: inline-flex; align-items: center; gap: 6px; padding: clamp(0.2rem, 0.35vw, 0.3rem) clamp(0.5rem, 0.9vw, 0.75rem); background: rgba(255,107,53,0.1); border: 1px solid rgba(255,107,53,0.2); border-radius: 6px; font-family: var(--font-mono); font-size: clamp(0.65rem, 0.8vw, 0.72rem); font-weight: 500; color: var(--orange); letter-spacing: 0.05em; text-transform: uppercase; flex-shrink: 0; }
+.panel-title { font-family: var(--font-display); font-size: clamp(0.95rem, 1.5vw, 1.25rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; flex-shrink: 0; }
+.panel-desc { font-size: clamp(0.8rem, 0.95vw, 0.88rem); color: var(--text-muted); line-height: 1.5; flex: 1; min-width: 180px; }
+
+.panel-visual { background: var(--velvet); overflow: hidden; position: relative; transition: height 0.5s var(--ease-out-expo); }
+.feature-panels[data-active="lineage"] .panel-visual, .panel-visual { height: 520px; }
+.feature-panels[data-active="graph"] .panel-visual { height: 520px; }
+.feature-panels[data-active="timeline"] .panel-visual { height: 650px; }
+.panel-visual iframe { width: 100%; height: 100%; border: none; display: block; background: var(--velvet); }
+
+/* ===========================================
+   PROOF STRIP
+   =========================================== */
+.proof-section { border-top: 1px solid rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.04); background: var(--velvet-mid); }
+.proof-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+.proof-item { text-align: center; padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1rem, 2vw, 2rem); position: relative; transition: background 0.3s ease; }
+.proof-item:hover { background: rgba(255,255,255,0.02); }
+.proof-item:not(:last-child)::after { content: ''; position: absolute; right: 0; top: 25%; height: 50%; width: 1px; background: rgba(255,255,255,0.06); }
+.proof-value { font-family: var(--font-display); font-size: clamp(1.3rem, 2.5vw, 2rem); font-weight: 900; letter-spacing: -0.03em; margin-bottom: clamp(0.25rem, 0.5vh, 0.4rem); }
+.proof-item:nth-child(1) .proof-value { color: var(--teal); }
+.proof-item:nth-child(2) .proof-value { color: var(--violet); }
+.proof-item:nth-child(3) .proof-value { color: var(--orange); }
+.proof-desc { font-family: var(--font-body); font-size: clamp(0.8rem, 1vw, 0.92rem); color: var(--text-secondary); }
+
+/* ===========================================
+   FAQ
+   =========================================== */
+.faq-section { background: radial-gradient(ellipse at 70% 40%, rgba(236,72,153,0.04) 0%, transparent 50%), var(--velvet); }
+.faq-list { margin-top: clamp(2rem, 4vh, 3rem); display: flex; flex-direction: column; gap: clamp(0.5rem, 1vh, 0.75rem); max-width: 780px; }
+.faq-item { background: var(--velvet-mid); border-radius: clamp(10px, 1.5vw, 14px); border: 1px solid rgba(255,255,255,0.06); overflow: hidden; transition: border-color 0.3s ease; }
+.faq-item:hover { border-color: rgba(255,255,255,0.1); }
+.faq-q { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: clamp(1rem, 1.8vw, 1.4rem) clamp(1.25rem, 2vw, 1.75rem); background: none; border: none; color: var(--text-on-dark); font-family: var(--font-display); font-size: clamp(0.92rem, 1.2vw, 1.05rem); font-weight: 600; text-align: left; cursor: pointer; gap: 1rem; }
+.faq-q:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
+.faq-q .chevron { font-size: 0.9em; color: var(--text-secondary); transition: transform 0.3s var(--ease-out-expo); flex-shrink: 0; }
+.faq-item.open .faq-q .chevron { transform: rotate(180deg); }
+.faq-a { max-height: 0; overflow: hidden; transition: max-height 0.5s var(--ease-out-expo); }
+.faq-item.open .faq-a { max-height: 200px; }
+.faq-a-inner { padding: 0 clamp(1.25rem, 2vw, 1.75rem) clamp(1rem, 1.8vw, 1.4rem); font-size: clamp(0.88rem, 1.15vw, 1rem); color: var(--text-muted); line-height: 1.65; max-width: 60ch; }
+
+/* ===========================================
+   FINAL CTA
+   =========================================== */
+.final-cta { text-align: center; background: radial-gradient(ellipse at 50% 80%, rgba(255, 107, 53, 0.08) 0%, transparent 55%), radial-gradient(ellipse at 30% 30%, rgba(139, 92, 246, 0.06) 0%, transparent 50%), var(--velvet); }
+.final-cta .container { display: flex; flex-direction: column; align-items: center; gap: clamp(1rem, 2vh, 1.5rem); }
+.final-cta .section-title { max-width: 600px; }
+.final-cta .section-sub { text-align: center; }
+.contact-line { font-family: var(--font-mono); font-size: clamp(0.72rem, 0.9vw, 0.82rem); color: var(--text-secondary); margin-top: clamp(0.25rem, 0.5vh, 0.5rem); }
+.contact-line a { color: var(--text-muted); transition: color 0.25s ease; }
+.contact-line a:hover { color: var(--orange); }
+
+/* Footer */
+.footer { padding: clamp(1.5rem, 3vh, 2.5rem) 0; border-top: 1px solid rgba(255,255,255,0.04); }
+.footer .container { display: flex; justify-content: space-between; align-items: center; }
+.footer span { font-family: var(--font-mono); font-size: clamp(0.68rem, 0.85vw, 0.78rem); color: var(--text-secondary); }
+
+/* ===========================================
+   RESPONSIVE
+   =========================================== */
+@media (max-width: 900px) {
+  .panel-text { flex-direction: column; align-items: flex-start; }
+  .feature-panels[data-active="lineage"] .panel-visual, .panel-visual { height: 400px; }
+  .feature-panels[data-active="graph"] .panel-visual { height: 400px; }
+  .feature-panels[data-active="timeline"] .panel-visual { height: 500px; }
+}
+@media (max-width: 768px) {
+  .proof-grid { grid-template-columns: 1fr; }
+  .proof-item:not(:last-child)::after { display: none; }
+  .proof-item { border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .proof-item:last-child { border-bottom: none; }
+  .hero-headline { font-size: clamp(1.8rem, 8vw, 2.8rem); }
+  .feature-tabs { flex-direction: column; align-items: stretch; }
+  .math-result { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 480px) {
+  section { padding: clamp(40px, 8vh, 80px) 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  @keyframes panelExpand { from { opacity: 1; transform: none; } }
+  .hero { animation: none; }
+  .typing-dots span { animation: none; }
+  html { scroll-behavior: auto; }
+}
+</style>
+</head>
+<body>
+
+<div class="page-accent"></div>
+
+<nav class="topnav" id="topnav">
+  <div class="container">
+    <div class="wordmark"><span>naptha</span></div>
+    <a href="mailto:thomas@naptha.ai?subject=Naptha%20intro%20%E2%80%94%20%5BCompany%5D" class="nav-cta">Book a call</a>
+  </div>
+</nav>
+
+<!-- ===================== HERO ===================== -->
+<section class="hero">
+  <div class="container">
+    <div class="section-label reveal">Weekly product intelligence</div>
+    <h1 class="hero-headline reveal reveal-d1">See what's happening in your product org. <span class="gradient-text">Every week. In Slack.</span></h1>
+    <p class="hero-sub reveal reveal-d2">Naptha connects your existing tools and delivers a cross-source product report to Slack or email. No new dashboard. No manual work. Just clarity, every Monday.</p>
+    <div class="hero-tags reveal reveal-d3">
+      <a href="mailto:thomas@naptha.ai?subject=Naptha%20intro%20%E2%80%94%20%5BCompany%5D" class="cta-btn">Get your first report <span class="arrow">&rarr;</span></a>
+    </div>
+    <div class="hero-tags reveal reveal-d4">
+      <span class="tag"><span class="dot"></span> First report in 2 weeks</span>
+      <span class="tag"><span class="dot"></span> Connects 8+ sources</span>
+      <span class="tag"><span class="dot"></span> Cancel anytime</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== THE MATH ===================== -->
+<section class="math-section">
+  <div class="container">
+    <div class="section-label reveal">The math</div>
+    <h2 class="section-title reveal reveal-d1">What does your weekly product review actually cost?</h2>
+    <div class="math-card reveal reveal-d2">
+      <div class="math-card-inner">
+        <div class="math-rows">
+          <div class="math-formula"><span class="num">5</span> PMs &times; <span class="num">5</span> hours/week &times; <span class="num">48</span> weeks</div>
+          <div class="math-divider"></div>
+          <div class="math-formula">= <span class="highlight">1,200 hours/year</span> on manual data gathering</div>
+          <div class="math-formula">= <span class="highlight">$150K+</span> of PM salary compiling reports by hand</div>
+        </div>
+        <div class="math-divider" style="margin: clamp(1rem, 2vh, 1.75rem) 0;"></div>
+        <div class="math-result">
+          <div class="math-result-left">
+            <span class="math-result-value">Naptha replaces this.</span>
+            <span class="math-result-label">A report that writes itself, every week.</span>
+          </div>
+          <div class="math-naptha">
+            <span class="math-naptha-price">$600/mo</span>
+            <span class="math-naptha-label">with Naptha</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== REPORT MOCKUP ===================== -->
+<section class="report-section">
+  <div class="container">
+    <div class="section-label reveal">What you get</div>
+    <h2 class="section-title reveal reveal-d1">A weekly report your team <span class="gradient-text">actually reads</span></h2>
+    <p class="section-sub reveal reveal-d2">Every Monday, a cross-source intelligence report lands in your Slack channel. Not a dashboard. Not a tool. A report with traced insights your team can act on.</p>
+
+    <div class="report-mockup reveal reveal-d3">
+      <!-- Slack chrome bar -->
+      <div class="slack-chrome">
+        <div class="slack-dots"><span></span><span></span><span></span></div>
+        <span class="slack-hash">#</span>
+        <span class="slack-channel">product-intelligence</span>
+      </div>
+
+      <!-- Message -->
+      <div class="slack-message">
+        <div class="slack-avatar">N</div>
+        <div class="slack-msg-body">
+          <div class="slack-msg-meta">
+            <span class="slack-msg-name">Naptha</span>
+            <span class="slack-msg-badge">App</span>
+            <span class="slack-msg-time">Monday 9:00 AM</span>
+          </div>
+          <div class="slack-msg-title">Weekly Product Intelligence. Week 15</div>
+
+          <div class="report-blocks">
+            <!-- Insight 1 -->
+            <div class="report-block insight">
+              <div class="block-title"><span class="block-icon" style="color:var(--violet);">&#9672;</span> Top pattern: Power user churn risk</div>
+              <div class="block-desc">Users requesting bulk export are the same cohort churning at day 45. Confirmed across 3 sources.</div>
+              <div class="block-sources">
+                <span class="source-pill"><span class="pill-dot"></span> Intercom &middot; 12 tickets</span>
+                <span class="source-pill"><span class="pill-dot" style="background:var(--violet);"></span> Slack &middot; #feedback</span>
+                <span class="source-pill"><span class="pill-dot" style="background:var(--rose);"></span> Mixpanel &middot; retention</span>
+              </div>
+            </div>
+
+            <!-- Confirmed -->
+            <div class="report-block confirmed">
+              <div class="block-title"><span class="block-icon" style="color:var(--teal);">&#10003;</span> Growth team: onboarding redesign</div>
+              <div class="block-desc">Decision backed by 4 cross-source signals. Step-3 drop-off confirmed by Mixpanel funnel + Intercom tickets + 2 Gong calls.</div>
+            </div>
+
+            <!-- Warning -->
+            <div class="report-block warning">
+              <div class="block-title"><span class="block-icon" style="color:var(--orange);">&#9888;</span> Platform team: API v3 needs review</div>
+              <div class="block-desc">Only 1 internal signal. No customer data supports this priority. Recommend review before committing eng resources.</div>
+            </div>
+
+            <!-- New signal -->
+            <div class="report-block insight">
+              <div class="block-title"><span class="block-icon" style="color:var(--violet);">&#10022;</span> New this week: Pricing friction emerging</div>
+              <div class="block-desc">3 Gong calls + 2 Intercom tickets mention pricing confusion. First appeared this week.</div>
+              <div class="block-sources">
+                <span class="source-pill"><span class="pill-dot" style="background:var(--teal);"></span> Gong &middot; 3 calls</span>
+                <span class="source-pill"><span class="pill-dot"></span> Intercom &middot; 2 tickets</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Typing reply -->
+      <div class="slack-typing">
+        <div class="typing-avatar">JD</div>
+        <span class="typing-text">Why is churn risk high for the export cohort?</span>
+        <span class="typing-dots"><span></span><span></span><span></span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== TABBED FEATURES ===================== -->
+<section class="feature-section">
+  <div class="container">
+    <div class="feature-header reveal">
+      <div class="section-label">Behind the scenes</div>
+      <h2 class="section-title">How your report is built</h2>
+      <p class="section-sub">Naptha extracts, synthesizes, and delivers. You just read the report.</p>
+    </div>
+
+    <div class="feature-tabs reveal reveal-d1">
+      <button class="feature-tab active" data-tab="lineage"><span class="tab-icon">&#10132;</span> Sources &rarr; Report</button>
+      <button class="feature-tab" data-tab="graph"><span class="tab-icon">&#9677;</span> Knowledge graph</button>
+      <button class="feature-tab" data-tab="timeline"><span class="tab-icon">&#9201;</span> Week over week</button>
+    </div>
+
+    <div class="feature-panels reveal reveal-d2" data-active="lineage">
+
+      <div class="feature-panel active" id="panel-lineage">
+        <div class="panel-text">
+          <span class="panel-badge" style="background:rgba(236,72,153,0.1);border-color:rgba(236,72,153,0.2);color:var(--rose);">&#10132; Lineage</span>
+          <h3 class="panel-title">From raw data to your weekly report</h3>
+          <p class="panel-desc">See exactly how data flows into your report. Every insight traces back through signals to original sources. Click any node to explore.</p>
+        </div>
+        <div class="panel-visual">
+          <iframe src="report-lineage.html" title="Report Lineage"></iframe>
+        </div>
+      </div>
+
+      <div class="feature-panel" id="panel-graph">
+        <div class="panel-text">
+          <span class="panel-badge">&#9677; Context Graph</span>
+          <h3 class="panel-title">Every source, signal, and insight connected</h3>
+          <p class="panel-desc">Naptha builds a knowledge graph that compounds weekly. By month 3, patterns emerge no single tool could find. Drag nodes to explore.</p>
+        </div>
+        <div class="panel-visual">
+          <iframe src="context-graph.html" title="Context Graph"></iframe>
+        </div>
+      </div>
+
+      <div class="feature-panel" id="panel-timeline">
+        <div class="panel-text">
+          <span class="panel-badge" style="background:rgba(0,191,165,0.1);border-color:rgba(0,191,165,0.2);color:var(--teal);">&#9201; Timeline</span>
+          <h3 class="panel-title">Signals, metrics, and traces over time</h3>
+          <p class="panel-desc">Qualitative and quantitative data on a unified timeline. See how patterns converge across weeks and where agent runs extract new insights.</p>
+        </div>
+        <div class="panel-visual">
+          <iframe src="unified-timeline.html" title="Unified Timeline"></iframe>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PROOF STRIP ===================== -->
+<section class="proof-section">
+  <div class="container">
+    <div class="proof-grid">
+      <div class="proof-item reveal"><div class="proof-value">2 weeks</div><div class="proof-desc">First report delivered</div></div>
+      <div class="proof-item reveal reveal-d1"><div class="proof-value">8+ sources</div><div class="proof-desc">Connected automatically</div></div>
+      <div class="proof-item reveal reveal-d2"><div class="proof-value">$600/mo</div><div class="proof-desc">A report that writes itself</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FAQ ===================== -->
+<section class="faq-section">
+  <div class="container">
+    <div class="section-label reveal">Common questions</div>
+    <h2 class="section-title reveal reveal-d1">You're probably wondering</h2>
+    <div class="faq-list">
+      <div class="faq-item reveal reveal-d1">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">"How is this different from a dashboard?"<span class="chevron">&#9662;</span></button>
+        <div class="faq-a"><div class="faq-a-inner">Dashboards require you to log in, learn the tool, interpret the data. Naptha delivers a synthesized report to Slack. No new tool. No interpretation needed. Cross-source patterns surfaced automatically.</div></div>
+      </div>
+      <div class="faq-item reveal reveal-d2">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">"What sources does it connect to?"<span class="chevron">&#9662;</span></button>
+        <div class="faq-a"><div class="faq-a-inner">Slack, Jira, Intercom, Amplitude, Mixpanel, PostHog, Gong, HubSpot, Linear, Zendesk, and more. If your team uses it, Naptha can read it.</div></div>
+      </div>
+      <div class="faq-item reveal reveal-d3">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">"How is this different from ChatGPT?"<span class="chevron">&#9662;</span></button>
+        <div class="faq-a"><div class="faq-a-inner">No memory across sessions, no scheduling, no team workspace, no traceability. It works for one PM pasting data. It breaks for a team that needs shared, persistent, weekly intelligence.</div></div>
+      </div>
+      <div class="faq-item reveal reveal-d4">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">"Do we need to change our workflow?"<span class="chevron">&#9662;</span></button>
+        <div class="faq-a"><div class="faq-a-inner">No. The report arrives in Slack. No new tool, no manual tagging. Naptha plugs into your existing stack.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FINAL CTA ===================== -->
+<section class="final-cta">
+  <div class="container">
+    <div class="section-label reveal">Get started</div>
+    <h2 class="section-title reveal reveal-d1">Get your first report <span class="gradient-text">in 2 weeks.</span></h2>
+    <p class="section-sub reveal reveal-d2">Book a 30-min call. We'll show you what a cross-source product report looks like on your data.</p>
+    <a href="mailto:thomas@naptha.ai?subject=Naptha%20intro%20%E2%80%94%20%5BCompany%5D" class="cta-btn reveal reveal-d3">Book a call with us <span class="arrow">&rarr;</span></a>
+    <p class="contact-line reveal reveal-d4"><a href="mailto:richard@naptha.ai">richard@naptha.ai</a> &middot; <a href="mailto:thomas@naptha.ai">thomas@naptha.ai</a></p>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container"><span>&copy; 2026 Naptha</span><span>Weekly product intelligence</span></div>
+</footer>
+
+<script>
+(function () {
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver(
+    (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+    { threshold: 0.12, rootMargin: '0px 0px -30px 0px' }
+  );
+  reveals.forEach((el) => observer.observe(el));
+
+  // Nav scroll
+  const nav = document.getElementById('topnav');
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      requestAnimationFrame(() => { nav.classList.toggle('scrolled', window.scrollY > 40); ticking = false; });
+      ticking = true;
+    }
+  });
+
+  // Tabs with adaptive height + iframe reload
+  const tabs = document.querySelectorAll('.feature-tab');
+  const panels = document.querySelectorAll('.feature-panel');
+  const panelsWrap = document.querySelector('.feature-panels');
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      tabs.forEach((t) => t.classList.remove('active'));
+      panels.forEach((p) => p.classList.remove('active'));
+      tab.classList.add('active');
+      panelsWrap.setAttribute('data-active', target);
+      const activePanel = document.getElementById('panel-' + target);
+      activePanel.classList.add('active');
+      // Reload iframe so D3 recalculates dimensions
+      const iframe = activePanel.querySelector('iframe');
+      if (iframe) {
+        const src = iframe.getAttribute('src');
+        iframe.removeAttribute('src');
+        requestAnimationFrame(() => iframe.setAttribute('src', src));
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>
